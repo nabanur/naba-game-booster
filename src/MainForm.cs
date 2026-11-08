@@ -304,6 +304,40 @@ namespace NabaGameBooster
             scroll.Controls.Add(guide);
             y += 80;
 
+            // ---- Pro mouse guide ----
+            scroll.Controls.Add(SectionLabel("PRO MOUSE", 4, y)); y += 38;
+            string ghub = null;
+            try
+            {
+                string gdir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LGHUB");
+                if (System.IO.Directory.Exists(gdir))
+                {
+                    var hits = System.IO.Directory.GetFiles(gdir, "lghub.exe", System.IO.SearchOption.AllDirectories);
+                    if (hits.Length > 0) ghub = hits[0];
+                }
+            }
+            catch { }
+            var mg = new Card { Location = new Point(2, y), Size = new Size(450, 132), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+            mg.Controls.Add(new IconBox { IconName = "mouse", Location = new Point(12, 14), Size = new Size(26, 26) });
+            mg.Controls.Add(new Label { Text = (ghub != null ? "Logitech G HUB" : "Mouse software (G HUB / Razer / Redragon...)") + " me ye karo:", Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(48, 10), Size = new Size(390, 20), BackColor = Color.Transparent, AutoEllipsis = true });
+            mg.Controls.Add(new Label
+            {
+                Text = "•  Report rate / Polling:  1000 Hz\n•  DPI:  800 ya 1600 - ek hi fix rakho\n•  DPI shift / DPI button band\n•  Phir game me sensitivity thodi kam karo",
+                Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(48, 34), Size = new Size(ghub != null ? 272 : 392, 90), BackColor = Color.Transparent
+            });
+            if (ghub != null)
+            {
+                var og = new RoundButton { Text = "G HUB kholo", Location = new Point(322, 44), Size = new Size(118, 42), Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Font = Theme.Semi(9F) };
+                og.Click += (s, e) =>
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + ghub + "\"") { UseShellExecute = false }); Log("G HUB khul raha hai..."); }
+                    catch (Exception ex) { Log("G HUB nahi khula: " + ex.Message); }
+                };
+                mg.Controls.Add(og);
+            }
+            scroll.Controls.Add(mg);
+            y += 146;
+
             // ---- Startup apps ----
             scroll.Controls.Add(SectionLabel("STARTUP APPS", 4, y));
             startupSummary = new Label { Location = new Point(250, y + 7), Size = new Size(120, 18), ForeColor = Theme.SubText, Font = Theme.F(9F), BackColor = Color.Transparent, Text = "Load..." };
@@ -475,7 +509,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "Mouse 1:1  (aim)", Icon = "mouse",
+                Title = "Pro Mouse  (aim stable)", Icon = "mouse",
                 GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = Tweaks.MouseRaw, Off = Tweaks.MouseDefault
@@ -600,7 +634,7 @@ namespace NabaGameBooster
         private static Control SectionLabel(string text, int x, int y)
         {
             string icon = text.StartsWith("GAME") ? "game" : text.StartsWith("SYSTEM") ? "monitor" : text.StartsWith("OPTIMIZE") ? "gear" :
-                          text.StartsWith("FPS") ? "fps" : text.StartsWith("STARTUP") ? "list" : text.StartsWith("ACTIVITY") ? "terminal" : null;
+                          text.StartsWith("FPS") ? "fps" : text.StartsWith("STARTUP") ? "list" : text.StartsWith("ACTIVITY") ? "terminal" : text.StartsWith("PRO MOUSE") ? "mouse" : null;
             int w = TextRenderer.MeasureText(text, Theme.Heavy(13F)).Width + 78;
             return new NeonHeader(text, icon) { Location = new Point(x, y), Size = new Size(w, 32) };
         }

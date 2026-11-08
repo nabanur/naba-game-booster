@@ -330,6 +330,36 @@ namespace NabaGameBooster
             Native.SetMouseAcceleration(0, 0, 0);
             Native.SetMouseSpeed(10);
             log("[OK] Mouse 1:1 - acceleration OFF, speed 10/20 (turant laga)");
+            ResetMouseCurves();
+            log("[OK] Mouse curve Windows default pe (koi chhupi smoothing nahi)");
+            UsbSuspend(false, log);
+        }
+
+        private const string UsbSub = "2a737441-1930-4402-8d77-b2bebba308a3", UsbSet = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
+
+        /// <summary>USB selective suspend: power bachane ke liye Windows USB ko sula deta hai - mouse ek pal atakta hai.</summary>
+        public static void UsbSuspend(bool enable, Action<string> log)
+        {
+            string v = enable ? "1" : "0";
+            Run("powercfg", "/setacvalueindex SCHEME_CURRENT " + UsbSub + " " + UsbSet + " " + v);
+            Run("powercfg", "/setdcvalueindex SCHEME_CURRENT " + UsbSub + " " + UsbSet + " " + v);
+            Run("powercfg", "/setactive SCHEME_CURRENT");
+            log(enable ? "[OK] USB power saving wapas chalu" : "[OK] USB power saving band - mouse signal nahi atkega");
+        }
+
+        private static void ResetMouseCurves()
+        {
+            try
+            {
+                using (var k = Registry.CurrentUser.CreateSubKey(@"Control Panel\Mouse"))
+                {
+                    k.SetValue("SmoothMouseXCurve", new byte[] {
+                        0,0,0,0,0,0,0,0, 0xC0,0xCC,0x0C,0,0,0,0,0, 0x80,0x99,0x19,0,0,0,0,0, 0x40,0x66,0x26,0,0,0,0,0, 0x00,0x33,0x33,0,0,0,0,0 }, RegistryValueKind.Binary);
+                    k.SetValue("SmoothMouseYCurve", new byte[] {
+                        0,0,0,0,0,0,0,0, 0,0,0x38,0,0,0,0,0, 0,0,0x70,0,0,0,0,0, 0,0,0xA8,0,0,0,0,0, 0,0,0xE0,0,0,0,0,0 }, RegistryValueKind.Binary);
+                }
+            }
+            catch { }
         }
 
         public static void MouseDefault(Action<string> log)
@@ -342,6 +372,7 @@ namespace NabaGameBooster
             Native.SetMouseAcceleration(6, 10, 1);
             Native.SetMouseSpeed(10);
             log("[OK] Mouse Windows default pe wapas");
+            UsbSuspend(true, log);
         }
 
         // ---------------- Memory Integrity ----------------

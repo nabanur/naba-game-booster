@@ -143,6 +143,19 @@ namespace NabaGameBooster
             return FeatureState.Off;
         }
 
+        /// <summary>true = USB selective suspend band (AC+DC), null = pata nahi chala.</summary>
+        public static bool? UsbSuspendOff()
+        {
+            try
+            {
+                string o = Run("powercfg", "/query SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226", 8000) ?? "";
+                var m = System.Text.RegularExpressions.Regex.Matches(o, @"0x([0-9a-fA-F]{8})");
+                if (m.Count < 2) return null;
+                return Convert.ToInt32(m[m.Count - 1].Groups[1].Value, 16) == 0 && Convert.ToInt32(m[m.Count - 2].Groups[1].Value, 16) == 0;
+            }
+            catch { return null; }
+        }
+
         public static FeatureState Mouse(out string detail)
         {
             const string k = @"Control Panel\Mouse";
@@ -150,8 +163,11 @@ namespace NabaGameBooster
                     && RegStr(Registry.CurrentUser, k, "MouseThreshold1") == "0"
                     && RegStr(Registry.CurrentUser, k, "MouseThreshold2") == "0";
             string sens = RegStr(Registry.CurrentUser, k, "MouseSensitivity") ?? "10";
-            detail = raw ? "Acceleration OFF, speed " + sens : "Windows acceleration chalu hai";
-            return raw ? FeatureState.On : FeatureState.Off;
+            bool? usbOff = UsbSuspendOff();
+            if (raw && usbOff != false) { detail = "1:1 aim  •  acceleration OFF  •  USB power saving band"; return FeatureState.On; }
+            if (raw) { detail = "USB power saving chalu hai - switch dabao"; return FeatureState.Partial; }
+            detail = "Windows acceleration chalu hai - aim hilta hai";
+            return FeatureState.Off;
         }
 
         /// <summary>Feature "Memory Integrity band" ka state: On = band hai (gaming ke liye achha).</summary>
