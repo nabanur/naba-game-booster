@@ -15,7 +15,7 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | Game Mode ON | Browser, Premiere, Animate, Telegram, Codex waghera PAUSE (kaam jaisa ka taisa), RAM khali; Google Drive/OneDrive/Epic band; BlueStacks HIGH priority |
 | Game Mode OFF | Paused apps wahin se chalu, band hue apps wapas |
 | Gaming Optimize | Ultimate Performance power plan, Windows Game Mode ON, Xbox recording OFF, GPU scheduling ON |
-| BlueStacks Optimize | PC ki RAM dekh ke BlueStacks RAM/CPU set, FPS 120, VSync off (backup banta hai) |
+| BlueStacks / MSI Optimize | PC ki RAM dekh ke RAM/CPU, chuna hua FPS limit, High FPS, VSync off (backup banta hai) |
 | Defender Exclusion | BlueStacks folders Defender scan se bahar |
 | NVIDIA Setting | Power management = max performance, Shader cache = unlimited (sirf NVIDIA card pe) |
 | Mouse 1:1 / Default | Mouse acceleration off / wapas |
@@ -24,7 +24,8 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | RAM Cleaner | Game Mode me cache (standby) RAM har 5 min saaf |
 | Timer 0.5ms | Game Mode me Windows timer 0.5ms - smooth frames |
 | Startup Apps | PC chalu hote hi khulne wale apps band/chalu |
-| 240 FPS | BlueStacks/MSI FPS limit 240 + NVIDIA VSync off + guide |
+| BlueStacks Fast Mode | Windows Hyper-V band - emulator apne tez engine pe (restart chahiye) |
+| FPS Limit | Smooth (monitor ke barabar) / 120 / 240 - FPS counter ON |
 
 ## Naya version kaise nikale
 `src/NabaGameBooster.csproj` me kuch badlo, `CHANGELOG-latest.md` me likho kya naya hai, phir tag push karo:

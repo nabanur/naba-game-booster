@@ -67,6 +67,51 @@ namespace NabaGameBooster
             log("[OK] Turbo hata diya (Windows default)");
         }
 
+        // ---------------- Fast Mode (Windows hypervisor / Hyper-V off) ----------------
+        private static string BcdHypervisor()
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(Status.Run("bcdedit", "/enum {current}"), @"hypervisorlaunchtype\s+(\S+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return m.Success ? m.Groups[1].Value.ToLowerInvariant() : "auto";   // line na ho to Windows default = Auto
+        }
+
+        public static bool HypervisorRunning()
+        {
+            try
+            {
+                using (var q = new System.Management.ManagementObjectSearcher("SELECT HypervisorPresent FROM Win32_ComputerSystem"))
+                    foreach (System.Management.ManagementObject mo in q.Get())
+                        return Convert.ToBoolean(mo["HypervisorPresent"]);
+            }
+            catch { }
+            return false;
+        }
+
+        public static FeatureState FastModeState(out string detail)
+        {
+            if (!Emulators.AnyInstalled) { detail = "BlueStacks / MSI install nahi hai"; return FeatureState.NotAvailable; }
+            bool off = BcdHypervisor() == "off";
+            bool running = HypervisorRunning();
+            if (off && !running) { detail = "Emulator apne tez engine pe chalta hai"; return FeatureState.On; }
+            if (off && running) { detail = "PC restart ke baad lagega"; return FeatureState.Pending; }
+            if (!off && !running) { detail = "Hyper-V band hai - switch dabao pakka karne ke liye"; return FeatureState.Partial; }
+            detail = "Hyper-V chalu - emulator dheema aur FPS upar-neeche";
+            return FeatureState.Off;
+        }
+
+        public static void FastModeOn(Action<string> log)
+        {
+            string o = Status.Run("bcdedit", "/set hypervisorlaunchtype off");
+            if (o.IndexOf("success", StringComparison.OrdinalIgnoreCase) < 0 && o.Trim().Length > 0) log("bcdedit: " + o.Trim());
+            log("[OK] Fast Mode ON - Windows Hyper-V band (restart ke baad).");
+            log("     PC RESTART karo. Phir BlueStacks / MSI apne tez engine pe chalega.");
+        }
+
+        public static void FastModeOff(Action<string> log)
+        {
+            Status.Run("bcdedit", "/set hypervisorlaunchtype auto");
+            log("[OK] Fast Mode OFF - Hyper-V wapas chalu (restart ke baad).");
+        }
+
         // ---------------- Timer 0.5ms ----------------
         private const string KernelKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\kernel";
 

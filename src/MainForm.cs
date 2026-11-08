@@ -233,14 +233,26 @@ namespace NabaGameBooster
             BuildOptimizations(scroll);
             y = optimizeTop + features.Count * 47 + 14;
 
-            // ---- 240 FPS guide ----
-            scroll.Controls.Add(SectionLabel("240 FPS", 10, y)); y += 26;
+            // ---- FPS limit ----
+            scroll.Controls.Add(SectionLabel("FPS LIMIT", 10, y)); y += 26;
             var guide = new Card { Location = new Point(8, y), Size = new Size(452, 64), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            guide.Controls.Add(new Label { Text = "Free Fire MAX ko 240 FPS tak le jao", Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 8), AutoSize = true, BackColor = Color.Transparent });
-            guide.Controls.Add(new Label { Text = "Naya x86 version + game ki setting - steps dekho", Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(12, 30), Size = new Size(290, 28), BackColor = Color.Transparent });
-            var gb = new RoundButton { Text = "Steps dekho", Location = new Point(320, 16), Size = new Size(118, 32), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(9F), Radius = 8 };
+            fpsInfo = new Label { Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 8), Size = new Size(240, 20), BackColor = Color.Transparent };
+            guide.Controls.Add(fpsInfo);
+            guide.Controls.Add(new Label { Text = "FPS game me BlueStacks ke counter me dikhega", Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(12, 32), Size = new Size(240, 28), BackColor = Color.Transparent });
+            var change = new RoundButton { Text = "Badlo", Location = new Point(258, 16), Size = new Size(84, 32), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(9F), Radius = 8 };
+            change.Click += (s, e) =>
+            {
+                if (busy) return;
+                if (!Emulators.AnyInstalled) { Info("BlueStacks / MSI install nahi hai."); return; }
+                if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI poora band karo (tray me bhi), phir badlo."); return; }
+                int fps = FpsDialog.Ask(this);
+                if (fps <= 0) return;
+                Settings.FpsLimit = fps;
+                RunJob("FPS limit " + fps, Tweaks.BlueStacksOptimize);
+            };
+            var gb = new RoundButton { Text = "240 guide", Location = new Point(350, 16), Size = new Size(90, 32), Fill = Theme.Card, Font = Theme.Semi(9F), Radius = 8 };
             gb.Click += (s, e) => ShowFpsGuide();
-            guide.Controls.Add(gb);
+            guide.Controls.Add(change); guide.Controls.Add(gb);
             scroll.Controls.Add(guide);
             y += 78;
 
@@ -254,19 +266,22 @@ namespace NabaGameBooster
         }
 
         private int optimizeTop = 32;
+        private Label fpsInfo;
 
         private void ShowFpsGuide()
         {
             var msg =
                 "FREE FIRE MAX - 240 FPS tak kaise le jayein:\n\n" +
-                "1.  Naba me 'BlueStacks / MSI Optimize' ON karo (FPS limit 240).\n" +
-                "2.  'NVIDIA Boost' ON karo (VSync off - FPS monitor pe nahi rukega).\n" +
-                "3.  Free Fire MAX ka naya x86 version lo: BlueStacks ke Free Fire MAX page pe\n" +
+                "1.  Naba me 'BlueStacks Fast Mode' ON karo aur PC restart karo.\n" +
+                "2.  FPS LIMIT me 'Badlo' -> 240 chuno.\n" +
+                "3.  'NVIDIA Boost' ON karo (VSync off).\n" +
+                "4.  Free Fire MAX ka naya x86 version lo: BlueStacks ke Free Fire MAX page pe\n" +
                 "     'Play Free Fire MAX on PC' se install karo. (Pehle game me account bind\n" +
                 "     check kar lo - Google/Facebook - taaki data safe rahe.)\n" +
-                "4.  Free Fire ke andar Settings -> Graphics: 'Smooth', High FPS ka sabse uncha\n" +
+                "5.  Free Fire ke andar Settings -> Graphics: 'Smooth', High FPS ka sabse uncha\n" +
                 "     option, Shadow OFF.\n" +
-                "5.  Khelne se pehle Naba me GAME MODE START dabao.\n\n" +
+                "6.  Khelne se pehle Naba me GAME MODE START dabao.\n\n" +
+                "FPS upar-neeche ho raha ho to limit monitor ke barabar rakho (sabse smooth).\n" +
                 "240 ek upar ki limit hai - asli FPS PC aur game ke scene pe depend karta hai.\n" +
                 "BlueStacks ke FPS counter me apna asli number dekh lo.\n\n" +
                 "BlueStacks ka 240 FPS guide page kholna hai?";
@@ -291,21 +306,31 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "BlueStacks / MSI Optimize (240 FPS)",
+                Title = "BlueStacks / MSI Optimize",
                 GetState = x => { var st = Status.BlueStacks(out d); Pass(d); return st; },
                 ConfirmOn = () =>
                 {
                     if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI poora band karo (tray me bhi), phir switch dabao."); return false; }
-                    int ram, cpus, pcRam, threads; Tweaks.BlueStacksPlan(out ram, out cpus, out pcRam, out threads);
-                    return Ask(string.Format("Is PC me {0} GB RAM aur {1} CPU threads hain.\n\nBlueStacks / MSI App Player me lagega:\n- RAM: {2} GB\n- CPU: {3} cores\n- FPS limit: 240 (High FPS ON)\n- VSync: OFF\n\nPurani setting ka backup Documents me banega. Lagana hai?", pcRam, threads, ram / 1024, cpus));
+                    int fps = FpsDialog.Ask(this);
+                    if (fps <= 0) return false;
+                    Settings.FpsLimit = fps;
+                    return true;
                 },
                 ConfirmOff = () =>
                 {
-                    if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks poora band karo, phir switch dabao."); return false; }
+                    if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI poora band karo, phir switch dabao."); return false; }
                     if (!Tweaks.AnyBackup) { Info("Purani setting ka backup nahi mila - wapas nahi ja sakte."); return false; }
                     return Ask("BlueStacks / MSI ki purani setting (backup) wapas lagani hai?");
                 },
                 On = Tweaks.BlueStacksOptimize, Off = Tweaks.BlueStacksRestore
+            });
+            AddFeature(host, new Feature
+            {
+                Title = "BlueStacks Fast Mode",
+                GetState = x => { var st = Booster.FastModeState(out d); Pass(d); return st; },
+                ConfirmOn = () => Ask("Windows ka Hyper-V band hoga - BlueStacks / MSI apne tez engine pe chalega.\nFPS zyada aur tika hua rehta hai.\n\nDhyan do:\n- PC RESTART karna padega\n- WSL, Docker, Windows Sandbox nahi chalenge\n- Memory Integrity bhi band rahegi\n- BIOS me Virtualization (VT-x / SVM) ON hona chahiye\n\nLagana hai?"),
+                ConfirmOff = () => Ask("Hyper-V wapas chalu karna hai? (restart ke baad lagega)"),
+                On = Booster.FastModeOn, Off = Booster.FastModeOff
             });
             AddFeature(host, new Feature
             {
@@ -364,7 +389,7 @@ namespace NabaGameBooster
                 Title = "Memory Integrity band (FPS+)",
                 GetState = x => { var st = Status.MemoryIntegrityDisabled(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Memory Integrity band karne se games aur BlueStacks smooth chalte hain,\npar PC ki ek extra security layer hat jaati hai.\n\nRestart ke baad lagega. Karna hai?"),
-                ConfirmOff = () => Ask("Memory Integrity wapas chalu karna hai? (zyada security, gaming thodi dheemi)\nRestart ke baad lagega."),
+                ConfirmOff = () => Ask("Memory Integrity wapas chalu karna hai? (zyada security, gaming thodi dheemi)\nRestart ke baad lagega." + (Booster.HypervisorRunning() ? "" : "\n\nNote: BlueStacks Fast Mode ON hai to Memory Integrity tabhi chalegi jab Fast Mode OFF karoge.")),
                 On = log => Tweaks.MemoryIntegrity(false, log), Off = log => Tweaks.MemoryIntegrity(true, log)
             });
         }
@@ -568,7 +593,7 @@ namespace NabaGameBooster
                     results.Add(Tuple.Create(f, st, det));
                 }
                 string g; string plan = Status.ActivePowerPlan(out g);
-                return Tuple.Create(results, plan);
+                return Tuple.Create(results, plan, Tweaks.TargetFps, Tweaks.MonitorHz());
             }).ContinueWith(t =>
             {
                 if (IsDisposed || t.Exception != null) return;
@@ -586,6 +611,7 @@ namespace NabaGameBooster
                         f.Toggle.Enabled = !busy && f.State != FeatureState.NotAvailable;
                     }
                     planText.Text = "Power plan:  " + t.Result.Item2;
+                    if (fpsInfo != null) fpsInfo.Text = "Limit: " + t.Result.Item3 + " FPS   •   Monitor: " + t.Result.Item4 + " Hz";
                 }));
             });
         }

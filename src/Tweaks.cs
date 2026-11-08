@@ -113,7 +113,30 @@ namespace NabaGameBooster
             cpus = threads >= 8 ? 4 : 2;
         }
 
-        public const int TargetFps = 240;
+        /// <summary>Monitor ka refresh rate (Hz). Na mile to 60.</summary>
+        public static int MonitorHz()
+        {
+            int best = 0;
+            try
+            {
+                using (var q = new System.Management.ManagementObjectSearcher("SELECT CurrentRefreshRate FROM Win32_VideoController"))
+                    foreach (System.Management.ManagementObject mo in q.Get())
+                    {
+                        object v = mo["CurrentRefreshRate"];
+                        if (v != null) { int hz = Convert.ToInt32(v); if (hz > best && hz < 1000) best = hz; }
+                    }
+            }
+            catch { }
+            return best >= 30 ? best : 60;
+        }
+
+        /// <summary>Sujhaya FPS limit = monitor ke barabar (60-240 ke beech).</summary>
+        public static int RecommendedFps() { return Math.Max(60, Math.Min(240, MonitorHz())); }
+
+        public static int TargetFps
+        {
+            get { int f = Settings.FpsLimit; return f >= 30 ? f : RecommendedFps(); }
+        }
 
         private static string BackupDir
         {
@@ -129,6 +152,18 @@ namespace NabaGameBooster
         public static string ApplyEmuConf(string text, int ram, int cpus)
         {
             string t = text;
+            // FPS counter hamesha dikhe - jin instance me line nahi hai unme jodo
+            var instances = new HashSet<string>();
+            foreach (Match m in Regex.Matches(t, @"bst\.instance\.([^.\r\n]+)\.ram="""))
+                instances.Add(m.Groups[1].Value);
+            foreach (var inst in instances)
+            {
+                string key = "bst.instance." + inst + ".enable_fps_display=";
+                string nl = t.Contains("\r\n") ? "\r\n" : "\n";   // file jaisi line-ending rakho
+                if (t.IndexOf(key, StringComparison.Ordinal) < 0)
+                    t = t.TrimEnd('\r', '\n') + nl + key + "\"1\"" + nl;
+            }
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_fps_display=)""\d""", "${1}\"1\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.ram=)""\d+""", "${1}\"" + ram + "\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.cpus=)""\d+""", "${1}\"" + cpus + "\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.max_fps=)""\d+""", "${1}\"" + TargetFps + "\"");
@@ -151,7 +186,7 @@ namespace NabaGameBooster
                     File.Copy(e.Conf, bak, true);
                     string t = ApplyEmuConf(File.ReadAllText(e.Conf), ram, cpus);
                     File.WriteAllText(e.Conf, t, new UTF8Encoding(false));
-                    log(string.Format("[OK] {0}: RAM {1} GB, CPU {2} cores, FPS limit {3}, High FPS ON, VSync OFF", e.Name, ram / 1024, cpus, TargetFps));
+                    log(string.Format("[OK] {0}: RAM {1} GB, CPU {2} cores, FPS limit {3}, High FPS ON, VSync OFF, FPS counter ON", e.Name, ram / 1024, cpus, TargetFps));
                 }
                 catch (Exception ex) { log(e.Name + " me setting nahi lagi: " + ex.Message); }
             }

@@ -116,7 +116,7 @@ namespace NabaGameBooster
                 bool good = r.Success && r.Groups[1].Value == ram.ToString() && fps == Tweaks.TargetFps.ToString()
                             && (!h.Success || h.Groups[1].Value == "1") && (!v.Success || v.Groups[1].Value == "0");
                 if (good) ok++;
-                parts.Add(e.Short + ": " + fps + " FPS limit");
+                parts.Add(e.Short + ": FPS limit " + fps);
             }
             detail = string.Join("  •  ", parts);
             if (ok == emus.Count) return FeatureState.On;
