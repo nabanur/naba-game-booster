@@ -1,4 +1,4 @@
-v1.3.0 - 240 FPS + MSI App Player + FPS Test:
+v1.3.1 - 240 FPS + MSI App Player + FPS Test (PresentMon v1 metrics se aur sahi FPS):
 - MSI App Player support (BlueStacks 5 ke saath)
 - BlueStacks / MSI Optimize: FPS limit 240, High FPS ON, VSync OFF
 - NVIDIA Boost me 4 setting: Max performance, Shader cache unlimited, VSync Force OFF, Low Latency ON

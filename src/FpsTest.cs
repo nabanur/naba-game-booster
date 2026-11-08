@@ -38,7 +38,7 @@ namespace NabaGameBooster
             if (!Emulators.AnyRunning) throw new Exception("BlueStacks / MSI chal nahi raha - pehle Free Fire kholo.");
 
             string args = "--process_name HD-Player.exe --output_stdout --timed " + seconds +
-                          " --terminate_after_timed --stop_existing_session --session_name NabaFpsTest";
+                          " --terminate_after_timed --stop_existing_session --session_name NabaFpsTest --v1_metrics";
             var psi = new ProcessStartInfo(ToolPath, args)
             {
                 UseShellExecute = false, CreateNoWindow = true,
