@@ -77,6 +77,81 @@ namespace NabaGameBooster
             try { EmptyWorkingSet(h); } finally { CloseHandle(h); }
         }
 
+        // ---------------- RAM cleaner (standby list) ----------------
+        [DllImport("ntdll.dll")]
+        private static extern int NtSetSystemInformation(int infoClass, ref int info, int length);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool LookupPrivilegeValue(string system, string name, out long luid);
+
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        private struct TOKEN_PRIVILEGES { public int Count; public long Luid; public int Attr; }
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool AdjustTokenPrivileges(IntPtr token, bool disableAll, ref TOKEN_PRIVILEGES newState, int len, IntPtr prev, IntPtr retLen);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetCurrentProcess();
+
+        private static bool EnablePrivilege(string name)
+        {
+            IntPtr tok;
+            if (!OpenProcessToken(GetCurrentProcess(), 0x0020 | 0x0008, out tok)) return false;
+            try
+            {
+                long luid;
+                if (!LookupPrivilegeValue(null, name, out luid)) return false;
+                var tp = new TOKEN_PRIVILEGES { Count = 1, Luid = luid, Attr = 2 /* SE_PRIVILEGE_ENABLED */ };
+                return AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero) && Marshal.GetLastWin32Error() == 0;
+            }
+            finally { CloseHandle(tok); }
+        }
+
+        /// <summary>Windows ki "standby" (cache) RAM khali karta hai. Admin chahiye.</summary>
+        public static bool PurgeStandbyList()
+        {
+            try
+            {
+                EnablePrivilege("SeProfileSingleProcessPrivilege");
+                EnablePrivilege("SeIncreaseQuotaPrivilege");
+                int cmd = 3; // MemoryFlushModifiedList
+                NtSetSystemInformation(80 /* SystemMemoryListInformation */, ref cmd, sizeof(int));
+                cmd = 4;     // MemoryPurgeStandbyList
+                return NtSetSystemInformation(80, ref cmd, sizeof(int)) == 0;
+            }
+            catch { return false; }
+        }
+
+        // ---------------- Timer resolution ----------------
+        [DllImport("ntdll.dll")]
+        private static extern int NtSetTimerResolution(uint desired, bool set, out uint current);
+
+        [DllImport("ntdll.dll")]
+        private static extern int NtQueryTimerResolution(out uint min, out uint max, out uint current);
+
+        /// <summary>0.5ms timer maangta hai (set=true) ya chhodta hai (set=false). Value 100ns units me.</summary>
+        public static double SetTimerResolution(bool set)
+        {
+            try
+            {
+                uint min, max, cur;
+                NtQueryTimerResolution(out min, out max, out cur);
+                uint want = Math.Max(max, 5000u); // max = sabse chhota possible (aksar 5000 = 0.5ms)
+                NtSetTimerResolution(want, set, out cur);
+                return cur / 10000.0;
+            }
+            catch { return 0; }
+        }
+
+        public static double CurrentTimerMs()
+        {
+            try { uint min, max, cur; NtQueryTimerResolution(out min, out max, out cur); return cur / 10000.0; }
+            catch { return 0; }
+        }
+
         private const uint SPI_SETMOUSE = 0x0004;
         private const uint SPI_SETMOUSESPEED = 0x0071;
         private const uint SPIF_UPDATE_AND_SEND = 0x01 | 0x02;

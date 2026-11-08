@@ -38,11 +38,19 @@ namespace NabaGameBooster
         private Label gmStatus, ramText, gpuText, bsText, planText;
         private Meter ramMeter;
         private TextBox logBox;
+        private ToggleSwitch aiToggle;
+        private RoundButton cleanBtn;
+        private readonly Timer ramCleanTimer = new Timer { Interval = 5 * 60 * 1000 };
+        private Panel tabOptimize, tabStartup, tabAim;
+        private RoundButton[] tabButtons;
+        private Panel startupList;
+        private Label startupSummary;
+        private bool startupLoaded;
 
         private static bool AutoUpdateEnabled
         {
-            get { var v = Status.Reg(Registry.CurrentUser, @"Software\NabaGameBooster", "AutoUpdate"); return v == null || Convert.ToInt32(v) == 1; }
-            set { using (var k = Registry.CurrentUser.CreateSubKey(@"Software\NabaGameBooster")) k.SetValue("AutoUpdate", value ? 1 : 0, RegistryValueKind.DWord); }
+            get { return Settings.AutoUpdate; }
+            set { Settings.AutoUpdate = value; }
         }
 
         public MainForm()
@@ -50,7 +58,7 @@ namespace NabaGameBooster
             Text = "Naba Game Booster";
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScaleDimensions = new SizeF(96F, 96F);
-            ClientSize = new Size(860, 660);
+            ClientSize = new Size(860, 770);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -65,8 +73,18 @@ namespace NabaGameBooster
             BuildHeader();
             BuildGameModeCard();
             BuildSystemCard();
-            BuildOptimizations();
+            BuildRightPanel();
             BuildLog();
+
+            ramCleanTimer.Tick += (s2, e2) =>
+            {
+                if (!GameMode.IsOn || !Settings.RamCleaner || busy) return;
+                Task.Factory.StartNew(() => Booster.CleanNow()).ContinueWith(t =>
+                {
+                    if (t.Exception == null && t.Result > 0.05) Log(string.Format("RAM Cleaner: +{0:N1} GB khali", t.Result));
+                });
+            };
+            ramCleanTimer.Start();
 
             var fast = new Timer { Interval = 2000 };
             fast.Tick += (s, e) => { RefreshLive(); TickAutoUpdate(); };
@@ -128,7 +146,7 @@ namespace NabaGameBooster
         // ================= Game Mode card =================
         private void BuildGameModeCard()
         {
-            var card = new Card { Location = new Point(24, 130), Size = new Size(300, 262) };
+            var card = new Card { Location = new Point(24, 130), Size = new Size(300, 290) };
             card.Controls.Add(SectionLabel("GAME MODE", 18, 14));
             gmButton = new RoundButton { Location = new Point(18, 44), Size = new Size(264, 124), Radius = 16, Font = Theme.Semi(20F) };
             gmButton.Click += (s, e) =>
@@ -137,41 +155,95 @@ namespace NabaGameBooster
                 if (GameMode.IsOn) RunJob("Game Mode STOP", GameMode.Off);
                 else RunJob("Game Mode START", GameMode.On);
             };
-            gmStatus = new Label { Location = new Point(18, 178), Size = new Size(264, 22), Font = Theme.Semi(9.5F), BackColor = Color.Transparent };
+            gmStatus = new Label { Location = new Point(18, 176), Size = new Size(264, 22), Font = Theme.Semi(9.5F), BackColor = Color.Transparent };
             var hint = new Label
             {
-                Text = "START: browser, Premiere, Telegram, Codex waghera pause - kaam jaisa ka taisa rahega. STOP: sab wahin se chalu.",
-                Location = new Point(18, 202), Size = new Size(264, 52), ForeColor = Theme.SubText, Font = Theme.F(8.5F), BackColor = Color.Transparent
+                Text = "Browser, Premiere, Telegram waghera pause - kaam jaisa ka taisa. STOP pe sab wahin se chalu.",
+                Location = new Point(18, 200), Size = new Size(264, 36), ForeColor = Theme.SubText, Font = Theme.F(8.5F), BackColor = Color.Transparent
             };
-            card.Controls.Add(gmButton); card.Controls.Add(gmStatus); card.Controls.Add(hint);
+            var aiRow = new Card { Location = new Point(14, 240), Size = new Size(272, 38), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
+            aiRow.Controls.Add(new Label { Text = "Claude / ChatGPT bhi pause", Font = Theme.F(9F), ForeColor = Theme.Text, Location = new Point(12, 10), AutoSize = true, BackColor = Color.Transparent });
+            aiToggle = new ToggleSwitch { Location = new Point(218, 8), Size = new Size(44, 22) };
+            aiToggle.Checked = Settings.PauseAiApps;
+            aiToggle.Toggled += (s, e) =>
+            {
+                if (GameMode.IsOn) { Info("Game Mode chal raha hai - STOP karke phir badlo."); return; }
+                Settings.PauseAiApps = !Settings.PauseAiApps;
+                aiToggle.Checked = Settings.PauseAiApps;
+                Log(Settings.PauseAiApps ? "Claude / ChatGPT desktop bhi Game Mode me pause honge." : "Claude / ChatGPT desktop Game Mode me chalte rahenge.");
+            };
+            aiRow.Controls.Add(aiToggle);
+            card.Controls.AddRange(new Control[] { gmButton, gmStatus, hint, aiRow });
             Controls.Add(card);
         }
 
         // ================= System card =================
         private void BuildSystemCard()
         {
-            var card = new Card { Location = new Point(24, 404), Size = new Size(300, 148) };
+            var card = new Card { Location = new Point(24, 432), Size = new Size(300, 186) };
             card.Controls.Add(SectionLabel("SYSTEM", 18, 14));
             ramText = InfoLabel(18, 40);
             ramMeter = new Meter { Location = new Point(18, 64), Size = new Size(264, 8) };
-            gpuText = InfoLabel(18, 80);
+            gpuText = InfoLabel(18, 82);
             gpuText.Text = "GPU:  " + (nvidiaName ?? "NVIDIA card nahi mila");
-            bsText = InfoLabel(18, 100);
-            planText = InfoLabel(18, 120);
-            card.Controls.AddRange(new Control[] { ramText, ramMeter, gpuText, bsText, planText });
+            bsText = InfoLabel(18, 102);
+            planText = InfoLabel(18, 122);
+            cleanBtn = new RoundButton { Text = "RAM saaf karo", Location = new Point(18, 146), Size = new Size(264, 30), Fill = Theme.Row, Font = Theme.Semi(9F) };
+            cleanBtn.Click += (s, e) =>
+            {
+                if (busy) return;
+                RunJob("RAM saaf", log => { double got = Booster.CleanNow(); log(string.Format("Cache RAM saaf - {0:N1} GB khali hua.", Math.Max(0, got))); });
+            };
+            card.Controls.AddRange(new Control[] { ramText, ramMeter, gpuText, bsText, planText, cleanBtn });
             Controls.Add(card);
         }
 
-        // ================= Optimizations =================
-        private void BuildOptimizations()
+        // ================= Right panel (tabs) =================
+        private void BuildRightPanel()
         {
-            var card = new Card { Location = new Point(340, 130), Size = new Size(496, 422) };
-            card.Controls.Add(SectionLabel("OPTIMIZATIONS", 18, 14));
-            card.Controls.Add(new Label { Text = "Switch dabao - setting lagegi ya hategi", ForeColor = Theme.SubText, Font = Theme.F(8.5F), AutoSize = true, Location = new Point(140, 15), BackColor = Color.Transparent });
+            var card = new Card { Location = new Point(340, 130), Size = new Size(496, 488) };
             Controls.Add(card);
 
+            string[] names = { "OPTIMIZE", "STARTUP APPS", "AIM TRAINER" };
+            tabButtons = new RoundButton[names.Length];
+            for (int i = 0; i < names.Length; i++)
+            {
+                int idx = i;
+                var b = new RoundButton { Text = names[i], Location = new Point(14 + i * 158, 12), Size = new Size(152, 32), Radius = 9, Font = Theme.Semi(9F) };
+                b.Click += (s, e) => SelectTab(idx);
+                tabButtons[i] = b;
+                card.Controls.Add(b);
+            }
+
+            tabOptimize = new Panel { Location = new Point(0, 52), Size = new Size(496, 430), BackColor = Color.Transparent };
+            tabStartup = new Panel { Location = new Point(0, 52), Size = new Size(496, 430), BackColor = Color.Transparent, Visible = false };
+            tabAim = new Panel { Location = new Point(0, 52), Size = new Size(496, 430), BackColor = Color.Transparent, Visible = false };
+            card.Controls.Add(tabOptimize); card.Controls.Add(tabStartup); card.Controls.Add(tabAim);
+
+            BuildOptimizations(tabOptimize);
+            BuildStartup(tabStartup);
+            BuildAim(tabAim);
+            SelectTab(0);
+        }
+
+        private void SelectTab(int i)
+        {
+            tabOptimize.Visible = i == 0; tabStartup.Visible = i == 1; tabAim.Visible = i == 2;
+            for (int k = 0; k < tabButtons.Length; k++)
+            {
+                tabButtons[k].Fill = k == i ? Theme.Accent : Theme.Row;
+                tabButtons[k].Fill2 = k == i ? Theme.AccentDark : Color.Empty;
+                tabButtons[k].ForeColor = k == i ? Color.FromArgb(20, 20, 26) : Theme.Text;
+                tabButtons[k].Invalidate();
+            }
+            if (i == 1 && !startupLoaded) LoadStartup();
+        }
+
+        // ================= Optimize tab =================
+        private void BuildOptimizations(Panel host)
+        {
             string d;
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
             {
                 Title = "Gaming Optimize",
                 GetState = x => { var st = Status.GamingOptimize(out d); Pass(d); return st; },
@@ -179,7 +251,7 @@ namespace NabaGameBooster
                 ConfirmOff = () => Ask("Power plan Balanced pe, Xbox recording aur GPU scheduling Windows default pe wapas.\n\nHatana hai?"),
                 On = Tweaks.GamingOptimize, Off = Tweaks.GamingOptimizeUndo
             });
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
             {
                 Title = "BlueStacks Optimize",
                 GetState = x => { var st = Status.BlueStacks(out d); Pass(d); return st; },
@@ -197,7 +269,15 @@ namespace NabaGameBooster
                 },
                 On = Tweaks.BlueStacksOptimize, Off = Tweaks.BlueStacksRestore
             });
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
+            {
+                Title = "BlueStacks Turbo",
+                GetState = x => { var st = Booster.TurboState(out d); Pass(d); return st; },
+                ConfirmOn = () => Ask("BlueStacks ke liye:\n\n- Hamesha HIGH CPU priority\n- High performance GPU (RTX)\n- Fullscreen optimization OFF\n\nBlueStacks ek baar band karke kholna padega. Lagana hai?"),
+                ConfirmOff = () => Ask("BlueStacks Turbo hata ke Windows default pe wapas?"),
+                On = Booster.TurboOn, Off = Booster.TurboOff
+            });
+            AddFeature(host, new Feature
             {
                 Title = "Defender Exclusion",
                 GetState = x => { var st = Status.Defender(out d); Pass(d); return st; },
@@ -205,7 +285,7 @@ namespace NabaGameBooster
                 ConfirmOff = () => Ask("BlueStacks ko dobara Defender scan me daalna hai?"),
                 On = Tweaks.DefenderExclude, Off = Tweaks.DefenderRemove
             });
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
             {
                 Title = "NVIDIA Boost",
                 GetState = x => { var st = Status.Nvidia(nvidiaName, out d); Pass(d); return st; },
@@ -219,14 +299,29 @@ namespace NabaGameBooster
                 },
                 On = Tweaks.NvidiaApply, Off = null
             });
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
+            {
+                Title = "RAM Cleaner",
+                GetState = x => { var st = Booster.RamCleanerState(out d); Pass(d); return st; },
+                ConfirmOn = () => true, ConfirmOff = () => true,
+                On = Booster.RamCleanerOn, Off = Booster.RamCleanerOff
+            });
+            AddFeature(host, new Feature
+            {
+                Title = "Timer 0.5ms (smooth)",
+                GetState = x => { var st = Booster.TimerState(out d); Pass(d); return st; },
+                ConfirmOn = () => Ask("Game Mode START pe Windows ka timer 0.5ms ho jayega - frames aur input smooth.\nWindows 11 pe poora asar ek baar restart ke baad.\n\nLagana hai?"),
+                ConfirmOff = () => true,
+                On = Booster.TimerOn, Off = Booster.TimerOff
+            });
+            AddFeature(host, new Feature
             {
                 Title = "Mouse 1:1  (aim)",
                 GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = Tweaks.MouseRaw, Off = Tweaks.MouseDefault
             });
-            AddFeature(card, new Feature
+            AddFeature(host, new Feature
             {
                 Title = "Memory Integrity band (FPS+)",
                 GetState = x => { var st = Status.MemoryIntegrityDisabled(out d); Pass(d); return st; },
@@ -239,14 +334,14 @@ namespace NabaGameBooster
         [ThreadStatic] private static string passDetail;
         private static void Pass(string d) { passDetail = d; }
 
-        private void AddFeature(Card parent, Feature f)
+        private void AddFeature(Control parent, Feature f)
         {
             int i = features.Count;
-            var row = new Card { Location = new Point(14, 44 + i * 62), Size = new Size(468, 56), Fill = Theme.Row, Border = Theme.Row, Radius = 10 };
-            var title = new Label { Text = f.Title, Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(14, 8), AutoSize = true, BackColor = Color.Transparent };
-            f.Detail = new Label { Text = "...", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(14, 30), Size = new Size(300, 18), BackColor = Color.Transparent, AutoEllipsis = true };
-            f.Pill = new Pill { Location = new Point(322, 17) };
-            f.Toggle = new ToggleSwitch { Location = new Point(408, 16), Size = new Size(46, 24) };
+            var row = new Card { Location = new Point(14, 2 + i * 47), Size = new Size(468, 43), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
+            var title = new Label { Text = f.Title, Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 4), AutoSize = true, BackColor = Color.Transparent };
+            f.Detail = new Label { Text = "...", Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(12, 23), Size = new Size(300, 16), BackColor = Color.Transparent, AutoEllipsis = true };
+            f.Pill = new Pill { Location = new Point(324, 11), Size = new Size(72, 21) };
+            f.Toggle = new ToggleSwitch { Location = new Point(410, 10), Size = new Size(44, 23) };
             f.Toggle.Toggled += (s, e) => OnToggle(f);
             row.Controls.AddRange(new Control[] { title, f.Detail, f.Pill, f.Toggle });
             parent.Controls.Add(row);
@@ -271,15 +366,89 @@ namespace NabaGameBooster
             }
         }
 
+        // ================= Startup tab =================
+        private void BuildStartup(Panel host)
+        {
+            startupSummary = new Label { Location = new Point(16, 4), Size = new Size(380, 20), ForeColor = Theme.SubText, Font = Theme.F(9F), BackColor = Color.Transparent, Text = "Load ho raha hai..." };
+            var refresh = new RoundButton { Text = "Refresh", Location = new Point(400, 0), Size = new Size(82, 26), Fill = Theme.Row, Font = Theme.Semi(8.5F), Radius = 8 };
+            refresh.Click += (s, e) => LoadStartup();
+            startupList = new Panel { Location = new Point(14, 32), Size = new Size(470, 392), AutoScroll = true, BackColor = Theme.Card };
+            host.Controls.Add(startupSummary); host.Controls.Add(refresh); host.Controls.Add(startupList);
+        }
+
+        private void LoadStartup()
+        {
+            startupLoaded = true;
+            startupSummary.Text = "Load ho raha hai...";
+            Task.Factory.StartNew(() => StartupApps.List()).ContinueWith(t =>
+            {
+                if (IsDisposed || t.Exception != null) return;
+                BeginInvoke(new Action(() => FillStartup(t.Result)));
+            });
+        }
+
+        private void FillStartup(List<StartupItem> items)
+        {
+            startupList.SuspendLayout();
+            foreach (Control c in startupList.Controls) c.Dispose();
+            startupList.Controls.Clear();
+            int y = 0;
+            foreach (var it in items)
+            {
+                var item = it;
+                var row = new Card { Location = new Point(0, y), Size = new Size(450, 44), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
+                var name = new Label { Text = item.Name, Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 4), Size = new Size(300, 18), AutoEllipsis = true, BackColor = Color.Transparent };
+                var cmd = new Label { Text = (item.Protected ? "Windows Security - band nahi kar sakte  •  " : item.Source + "  •  ") + item.Command, Font = Theme.F(7.5F), ForeColor = Theme.SubText, Location = new Point(12, 24), Size = new Size(330, 16), AutoEllipsis = true, BackColor = Color.Transparent };
+                var tg = new ToggleSwitch { Location = new Point(394, 11), Size = new Size(44, 23), Enabled = !item.Protected };
+                tg.Checked = item.Enabled;
+                tg.Toggled += (s, e) =>
+                {
+                    bool want = !item.Enabled;
+                    if (StartupApps.SetEnabled(item, want))
+                    {
+                        tg.Checked = item.Enabled;
+                        Log((want ? "Startup ON: " : "Startup OFF: ") + item.Name + (want ? "" : "  (agli baar PC chalu hone pe nahi khulega)"));
+                        UpdateStartupSummary(items);
+                    }
+                    else Log("Startup badal nahi paya: " + item.Name);
+                };
+                row.Controls.AddRange(new Control[] { name, cmd, tg });
+                startupList.Controls.Add(row);
+                y += 48;
+            }
+            startupList.ResumeLayout();
+            UpdateStartupSummary(items);
+        }
+
+        private void UpdateStartupSummary(List<StartupItem> items)
+        {
+            int on = 0; foreach (var i in items) if (i.Enabled) on++;
+            startupSummary.Text = string.Format("{0} apps PC chalu hote hi khulte hain  •  {1} band", on, items.Count - on);
+        }
+
+        // ================= Aim tab =================
+        private void BuildAim(Panel host)
+        {
+            var trainer = new AimTrainer { Location = new Point(14, 34), Size = new Size(468, 390) };
+            var movLbl = new Label { Text = "Chalte target", Font = Theme.F(9F), ForeColor = Theme.Text, Location = new Point(16, 6), AutoSize = true, BackColor = Color.Transparent };
+            var mov = new ToggleSwitch { Location = new Point(110, 4), Size = new Size(40, 21) };
+            mov.Toggled += (s, e) => { trainer.Moving = !trainer.Moving; mov.Checked = trainer.Moving; trainer.Invalidate(); };
+            var smlLbl = new Label { Text = "Chhote target", Font = Theme.F(9F), ForeColor = Theme.Text, Location = new Point(176, 6), AutoSize = true, BackColor = Color.Transparent };
+            var sml = new ToggleSwitch { Location = new Point(270, 4), Size = new Size(40, 21) };
+            sml.Toggled += (s, e) => { trainer.Small = !trainer.Small; sml.Checked = trainer.Small; trainer.Invalidate(); };
+            var tip2 = new Label { Text = "Match se pehle 2 round", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(330, 7), AutoSize = true, BackColor = Color.Transparent };
+            host.Controls.AddRange(new Control[] { movLbl, mov, smlLbl, sml, tip2, trainer });
+        }
+
         // ================= Log =================
         private void BuildLog()
         {
-            var card = new Card { Location = new Point(24, 564), Size = new Size(812, 82) };
+            var card = new Card { Location = new Point(24, 630), Size = new Size(812, 128) };
             card.Controls.Add(SectionLabel("ACTIVITY", 18, 10));
             logBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None,
-                Location = new Point(18, 32), Size = new Size(778, 42), BackColor = Theme.Card, ForeColor = Color.FromArgb(170, 220, 180),
+                Location = new Point(18, 32), Size = new Size(778, 88), BackColor = Theme.Card, ForeColor = Color.FromArgb(170, 220, 180),
                 Font = new Font("Consolas", 9F), TabStop = false
             };
             card.Controls.Add(logBox);
@@ -312,6 +481,7 @@ namespace NabaGameBooster
         {
             busy = b;
             gmButton.Enabled = !b;
+            if (cleanBtn != null) cleanBtn.Enabled = !b;
             foreach (var f in features) f.Toggle.Enabled = !b && f.State != FeatureState.NotAvailable;
             Cursor = b ? Cursors.WaitCursor : Cursors.Default;
             RefreshGameButton();

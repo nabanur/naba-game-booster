@@ -34,6 +34,12 @@ namespace NabaGameBooster
             "GoogleDriveFS", "OneDrive", "EpicGamesLauncher", "EpicWebHelper"
         };
 
+        // AI desktop apps - setting ON ho tabhi pause
+        private static readonly HashSet<string> AiApps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Claude", "ChatGPT"
+        };
+
         private static readonly HashSet<string> NoReopen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "EpicWebHelper"
@@ -83,7 +89,8 @@ namespace NabaGameBooster
             }
 
             // 2) Kaam wale apps PAUSE + RAM khali
-            var toPause = procs.Where(p => p.Id != me && PauseList.Contains(p.ProcessName)).ToList();
+            bool ai = Settings.PauseAiApps;
+            var toPause = procs.Where(p => p.Id != me && (PauseList.Contains(p.ProcessName) || (ai && AiApps.Contains(p.ProcessName)))).ToList();
             var pausedNames = new SortedDictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             foreach (var p in toPause)
             {
@@ -123,13 +130,27 @@ namespace NabaGameBooster
             if (pausedNames.Count == 0 && closedNames.Count == 0) log("Koi background app khula nahi tha - RAM pehle se free hai.");
 
             SetBlueStacksPriority(ProcessPriorityClass.High);
-            Thread.Sleep(1500);
+
+            if (Settings.TimerRes)
+            {
+                double ms = Native.SetTimerResolution(true);
+                log(string.Format("Timer: {0:0.###} ms", ms));
+            }
+            if (Settings.RamCleaner)
+            {
+                double got = Booster.CleanNow();
+                log(string.Format("RAM Cleaner: cache saaf (+{0:N1} GB)", Math.Max(0, got)));
+            }
+
+            Thread.Sleep(1000);
             log(string.Format("GAME MODE ON!  Khali RAM: {0:N1} GB -> {1:N1} GB.  BlueStacks = HIGH priority.", before, Native.FreeRamGB()));
         }
 
         public static void Off(Action<string> log)
         {
-            SetBlueStacksPriority(ProcessPriorityClass.Normal);
+            // BlueStacks Turbo ON ho to High hi rehne do
+            SetBlueStacksPriority(Booster.TurboPriorityOn ? ProcessPriorityClass.High : ProcessPriorityClass.Normal);
+            Native.SetTimerResolution(false);
             if (!IsOn) { log("Game Mode ON nahi tha."); return; }
 
             var lines = File.ReadAllLines(StateFile);

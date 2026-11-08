@@ -20,6 +20,11 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | NVIDIA Setting | Power management = max performance, Shader cache = unlimited (sirf NVIDIA card pe) |
 | Mouse 1:1 / Default | Mouse acceleration off / wapas |
 | Memory Integrity OFF / ON | FPS ke liye off, security ke liye on (restart chahiye) |
+| BlueStacks Turbo | Hamesha HIGH priority, high performance GPU, fullscreen optimization off |
+| RAM Cleaner | Game Mode me cache (standby) RAM har 5 min saaf |
+| Timer 0.5ms | Game Mode me Windows timer 0.5ms - smooth frames |
+| Startup Apps tab | PC chalu hote hi khulne wale apps band/chalu |
+| Aim Trainer tab | 30 second headshot practice |
 
 ## Naya version kaise nikale
 `src/NabaGameBooster.csproj` me kuch badlo, `CHANGELOG-latest.md` me likho kya naya hai, phir tag push karo:

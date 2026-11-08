@@ -1,7 +1,7 @@
-v1.1.0 - Naya professional design + auto update:
-- Naya dark design: Game Mode ka bada START/STOP button, System card (RAM meter, GPU, BlueStacks, power plan)
-- Har setting ke saath switch aur rangeen tag: ON (hara), OFF, ADHURA (peela), RESTART (neela), N/A
-- Switch se setting lagao bhi aur hatao bhi (Mouse, Memory Integrity, Defender, BlueStacks, Gaming Optimize)
-- Auto update: app khulte hi aur har 2 ghante check, naya version khud download + install (Game Mode STOP hone ke baad)
-- "Update check" button aur Auto update ON/OFF switch
-- Game Mode: apps PAUSE (kaam jaisa ka taisa), Google Drive/OneDrive sirf band
+v1.2.0 - Naye boost + Startup manager + Aim Trainer:
+- Game Mode: "Claude / ChatGPT bhi pause" switch
+- BlueStacks Turbo: hamesha HIGH priority + RTX GPU + fullscreen fix
+- RAM Cleaner: Game Mode me har 5 min cache RAM saaf, aur "RAM saaf karo" button
+- Timer 0.5ms: Game Mode me smooth frames aur jaldi input
+- STARTUP APPS tab: PC chalu hote hi khulne wale apps switch se band/chalu
+- AIM TRAINER tab: 30 second headshot practice (chalte/chhote target, best score)
