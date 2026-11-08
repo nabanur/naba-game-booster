@@ -71,8 +71,8 @@ namespace NabaGameBooster
             btnOff = MakeButton("GAME MODE  OFF", new Point(286, y), new Size(256, 62), Red);
             btnOff.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             Controls.Add(btnOn); Controls.Add(btnOff);
-            tip.SetToolTip(btnOn, "Browser, Adobe background, Telegram, Codex, Drive waghera BAND.\nRAM khali + BlueStacks ko HIGH priority.\nEditing apps (Premiere/Animate) save ka poochenge.");
-            tip.SetToolTip(btnOff, "Game Mode me jo apps band hue the, wo wapas khul jaate hain.");
+            tip.SetToolTip(btnOn, "Browser, Premiere, Animate, Telegram, Codex waghera PAUSE - kaam jaisa ka taisa rahega.\nUnki RAM khali hogi. Google Drive / OneDrive / Epic band honge.\nBlueStacks ko HIGH priority.");
+            tip.SetToolTip(btnOff, "Paused apps wahin se CHALU (project, tabs, video sab waise hi).\nBand hue apps wapas khulte hain.");
             btnOn.Click += (s, e) => RunJob("Game Mode ON", GameMode.On);
             btnOff.Click += (s, e) => RunJob("Game Mode OFF", GameMode.Off);
             y += 70;
@@ -153,8 +153,21 @@ namespace NabaGameBooster
             timer.Tick += (s, e) => RefreshStatus();
             timer.Start();
 
+            FormClosing += (s, e) =>
+            {
+                if (busy) { e.Cancel = true; Info("Abhi kaam chal raha hai - thoda ruko, phir band karo."); return; }
+                if (GameMode.IsOn)
+                {
+                    // Safety: app band ho rahi hai to paused apps ko atka hua nahi chhodna
+                    Cursor = Cursors.WaitCursor;
+                    try { GameMode.SafetyResume(Log); } catch { }
+                }
+            };
+
             Shown += (s, e) =>
             {
+                GameMode.CleanStaleState();
+                if (GameMode.IsOn) Log("Pichhli baar ka Game Mode abhi bhi ON hai - khel ke 'GAME MODE OFF' dabao.");
                 RefreshStatus();
                 Log("Naba Game Booster v" + Updater.CurrentText + " taiyaar hai. Button pe mouse rakhoge to batayega kya karta hai.");
                 CheckUpdateAsync();
@@ -208,7 +221,7 @@ namespace NabaGameBooster
         {
             status.Text = string.Format("RAM khali: {0:N1} / {1:N1} GB   ({2}% use me)", Native.FreeRamGB(), Native.TotalRamGB(), Native.RamLoadPercent());
             bool on = GameMode.IsOn;
-            gmBadge.Text = on ? "Game Mode: ON  - khel ke 'GAME MODE OFF' dabana" : "Game Mode: OFF";
+            gmBadge.Text = on ? "Game Mode: ON  - apps paused hain. Khel ke 'GAME MODE OFF' dabana (app band karne pe bhi sab chalu ho jayega)" : "Game Mode: OFF";
             gmBadge.ForeColor = on ? Color.FromArgb(120, 230, 140) : Muted;
         }
 

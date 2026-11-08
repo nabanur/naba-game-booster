@@ -40,6 +40,43 @@ namespace NabaGameBooster
         [DllImport("user32.dll", EntryPoint = "SystemParametersInfo", SetLastError = true)]
         private static extern bool SpiPtr(uint action, uint param, IntPtr vparam, uint winIni);
 
+        [DllImport("ntdll.dll")]
+        private static extern int NtSuspendProcess(IntPtr hProcess);
+
+        [DllImport("ntdll.dll")]
+        private static extern int NtResumeProcess(IntPtr hProcess);
+
+        [DllImport("psapi.dll", SetLastError = true)]
+        private static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+        private const uint PROCESS_SUSPEND_RESUME = 0x0800;
+        private const uint PROCESS_SET_QUOTA = 0x0100;
+        private const uint PROCESS_QUERY_INFORMATION = 0x0400;
+
+        /// <summary>Process ko pause karta hai (andar ka kaam jaisa ka taisa).</summary>
+        public static bool Suspend(int pid)
+        {
+            IntPtr h = OpenProcess(PROCESS_SUSPEND_RESUME, false, pid);
+            if (h == IntPtr.Zero) return false;
+            try { return NtSuspendProcess(h) == 0; } finally { CloseHandle(h); }
+        }
+
+        /// <summary>Paused process ko wahin se chalu karta hai.</summary>
+        public static bool Resume(int pid)
+        {
+            IntPtr h = OpenProcess(PROCESS_SUSPEND_RESUME, false, pid);
+            if (h == IntPtr.Zero) return false;
+            try { return NtResumeProcess(h) == 0; } finally { CloseHandle(h); }
+        }
+
+        /// <summary>Process ki RAM khali karwata hai (data page file me chala jaata hai, resume pe wapas).</summary>
+        public static void TrimMemory(int pid)
+        {
+            IntPtr h = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, pid);
+            if (h == IntPtr.Zero) return;
+            try { EmptyWorkingSet(h); } finally { CloseHandle(h); }
+        }
+
         private const uint SPI_SETMOUSE = 0x0004;
         private const uint SPI_SETMOUSESPEED = 0x0071;
         private const uint SPIF_UPDATE_AND_SEND = 0x01 | 0x02;

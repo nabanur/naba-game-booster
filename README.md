@@ -12,8 +12,8 @@ App khulte hi GitHub pe naya version check karta hai, aur naya version ho to **"
 ## Features
 | Button | Kya karta hai |
 |---|---|
-| Game Mode ON | Browser, Adobe background, Telegram, Codex, Drive waghera band. RAM khali, BlueStacks HIGH priority |
-| Game Mode OFF | Band hue apps wapas khulte hain |
+| Game Mode ON | Browser, Premiere, Animate, Telegram, Codex waghera PAUSE (kaam jaisa ka taisa), RAM khali; Google Drive/OneDrive/Epic band; BlueStacks HIGH priority |
+| Game Mode OFF | Paused apps wahin se chalu, band hue apps wapas |
 | Gaming Optimize | Ultimate Performance power plan, Windows Game Mode ON, Xbox recording OFF, GPU scheduling ON |
 | BlueStacks Optimize | PC ki RAM dekh ke BlueStacks RAM/CPU set, FPS 120, VSync off (backup banta hai) |
 | Defender Exclusion | BlueStacks folders Defender scan se bahar |

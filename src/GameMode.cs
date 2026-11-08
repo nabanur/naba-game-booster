@@ -9,36 +9,34 @@ using System.Threading;
 namespace NabaGameBooster
 {
     /// <summary>
-    /// Game Mode ON  = background apps band, list yaad rakho, BlueStacks HIGH priority.
-    /// Game Mode OFF = wahi apps wapas kholo (normal user mode me), priority normal.
+    /// Game Mode ON  = kaam wale apps PAUSE (andar ka kaam jaisa ka taisa) + unki RAM khali,
+    ///                 sync apps (Google Drive / OneDrive / Epic) BAND, BlueStacks HIGH priority.
+    /// Game Mode OFF = paused apps wahin se CHALU, band hue apps wapas khulte hain.
     /// </summary>
     internal static class GameMode
     {
-        // Editing apps: sirf "pyaar se" band (save ka poochenge). Kabhi zabardasti nahi.
-        private static readonly HashSet<string> Editors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        // PAUSE honge - project, tabs, video, chat sab waise hi rahenge.
+        private static readonly HashSet<string> PauseList = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Adobe Premiere Pro", "Animate", "Photoshop", "Illustrator", "AfterFX", "Audition", "Adobe Media Encoder"
-        };
-
-        // Baaki background apps: pehle pyaar se, na maane to zabardasti band.
-        private static readonly HashSet<string> CloseList = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
+            // Editing
+            "Adobe Premiere Pro", "Animate", "Photoshop", "Illustrator", "AfterFX", "Audition", "Adobe Media Encoder",
+            "CEPHtmlEngine", "Adobe CEF Helper", "Creative Cloud UI Helper", "CCXProcess", "CCLibrary",
             // Browsers
             "chrome", "brave", "msedge", "firefox", "opera", "opera_gx", "vivaldi",
-            // Apps
-            "Telegram", "WhatsApp", "Codex", "OneDrive", "GoogleDriveFS", "EpicGamesLauncher", "EpicWebHelper",
-            "fdm", "Copilot", "Notepad++", "Audacity", "ms-teams", "Teams", "Grok", "Spotify",
-            // Adobe background
-            "Creative Cloud", "Creative Cloud Helper", "Creative Cloud UI Helper", "CCXProcess", "CCLibrary", "CoreSync",
-            "Adobe Desktop Service", "AdobeIPCBroker", "AdobeCollabSync", "CEPHtmlEngine", "AdobeNotificationClient", "Adobe CEF Helper"
+            // Baaki apps
+            "Telegram", "WhatsApp", "Codex", "Spotify", "Notepad++", "Audacity", "Copilot", "Grok", "ms-teams", "Teams", "fdm"
         };
 
-        // OFF pe inhe dobara nahi kholna (Adobe app khulte hi yeh khud chalu hote hain).
+        // BAND honge (inme user ka koi kaam nahi hota). Inhe kabhi PAUSE nahi karna -
+        // Google Drive / OneDrive pause hone par poora Windows atak sakta hai.
+        private static readonly HashSet<string> CloseList = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "GoogleDriveFS", "OneDrive", "EpicGamesLauncher", "EpicWebHelper"
+        };
+
         private static readonly HashSet<string> NoReopen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Creative Cloud", "Creative Cloud Helper", "Creative Cloud UI Helper", "CCXProcess", "CCLibrary", "CoreSync",
-            "Adobe Desktop Service", "AdobeIPCBroker", "AdobeCollabSync", "CEPHtmlEngine", "AdobeNotificationClient",
-            "Adobe CEF Helper", "EpicWebHelper"
+            "EpicWebHelper"
         };
 
         private static string StateFile
@@ -53,68 +51,69 @@ namespace NabaGameBooster
 
         public static bool IsOn { get { return File.Exists(StateFile); } }
 
+        // State file format (har line):
+        //   P|pid|startTicks|naam     -> pause hua process
+        //   L|launchId               -> band hua app, OFF pe kholna hai
+
         public static void On(Action<string> log)
         {
+            if (IsOn) { log("Game Mode pehle se ON hai. Pehle OFF karo."); return; }
+
             double before = Native.FreeRamGB();
-            var targets = Process.GetProcesses()
-                .Where(p => CloseList.Contains(p.ProcessName) || Editors.Contains(p.ProcessName))
-                .ToList();
+            int me = Process.GetCurrentProcess().Id;
+            var lines = new List<string>();
+            var procs = Process.GetProcesses();
 
-            if (targets.Count == 0)
+            // 1) Sync / launcher apps band karo (pehle yaad rakho kaise kholna hai)
+            var toClose = procs.Where(p => CloseList.Contains(p.ProcessName)).ToList();
+            foreach (var g in toClose.GroupBy(p => p.ProcessName, StringComparer.OrdinalIgnoreCase))
             {
-                log("Koi background app khula nahi tha - RAM pehle se free hai.");
+                if (NoReopen.Contains(g.Key)) continue;
+                string path = g.Select(Native.ProcessPath).FirstOrDefault(x => !string.IsNullOrEmpty(x));
+                if (path != null) lines.Add("L|" + path);
             }
-            else
+
+            // 2) Kaam wale apps PAUSE + RAM khali
+            var toPause = procs.Where(p => p.Id != me && PauseList.Contains(p.ProcessName)).ToList();
+            var pausedNames = new SortedDictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in toPause)
             {
-                // 1) Yaad rakho kya-kya khula tha
-                var ids = new List<string>();
-                if (File.Exists(StateFile))
-                    ids.AddRange(File.ReadAllLines(StateFile).Where(l => !string.IsNullOrWhiteSpace(l)));
-
-                log("Yeh apps band ho rahe hain:");
-                foreach (var g in targets.GroupBy(p => p.ProcessName, StringComparer.OrdinalIgnoreCase))
+                long ticks;
+                try { ticks = p.StartTime.ToUniversalTime().Ticks; } catch { continue; }
+                long ws = 0;
+                try { ws = p.WorkingSet64; } catch { }
+                if (Native.Suspend(p.Id))
                 {
-                    long mb = 0;
-                    foreach (var p in g) { try { mb += p.WorkingSet64; } catch { } }
-                    log(string.Format("   {0,-26} {1,6:N0} MB", g.Key, mb / 1048576.0));
-
-                    if (NoReopen.Contains(g.Key)) continue;
-                    var main = g.OrderBy(p => SafeHandle(p) == IntPtr.Zero ? 1 : 0).First();
-                    string id = LaunchId(main);
-                    if (id != null && !ids.Contains(id, StringComparer.OrdinalIgnoreCase)) ids.Add(id);
+                    Native.TrimMemory(p.Id);
+                    lines.Add("P|" + p.Id + "|" + ticks + "|" + p.ProcessName);
+                    double mb; pausedNames.TryGetValue(p.ProcessName, out mb);
+                    pausedNames[p.ProcessName] = mb + ws / 1048576.0;
                 }
-                File.WriteAllLines(StateFile, ids);
-
-                // 2) Editing apps ko pyaar se band karo
-                foreach (var p in Process.GetProcesses().Where(p => Editors.Contains(p.ProcessName)))
-                    TryCloseWindow(p);
-
-                // 3) Baaki apps: 3 baar pyaar se, phir zabardasti
-                for (int i = 0; i < 3; i++)
-                {
-                    foreach (var p in Process.GetProcesses().Where(p => CloseList.Contains(p.ProcessName)))
-                        if (SafeHandle(p) != IntPtr.Zero) TryCloseWindow(p);
-                    Thread.Sleep(2000);
-                }
-                foreach (var p in Process.GetProcesses().Where(p => CloseList.Contains(p.ProcessName)))
-                {
-                    try { p.Kill(); } catch { }
-                }
-
-                // 4) Editing apps ko 20 second (save wala sawaal ho to jawab de do)
-                for (int t = 0; t < 20 && Process.GetProcesses().Any(p => Editors.Contains(p.ProcessName)); t += 2)
-                    Thread.Sleep(2000);
-                var left = Process.GetProcesses().Where(p => Editors.Contains(p.ProcessName))
-                    .Select(p => p.ProcessName).Distinct().ToList();
-                if (left.Count > 0)
-                    log("Yeh band nahi hue (unsaved kaam ho sakta hai): " + string.Join(", ", left) + " - save karke khud band karo.");
-
-                // State file hamesha bane, taaki OFF chal sake
-                if (!File.Exists(StateFile)) File.WriteAllText(StateFile, "");
             }
+
+            // State pehle likho, phir band karo - taaki kuch bhi ho, OFF hamesha chal sake
+            File.WriteAllLines(StateFile, lines);
+
+            foreach (var p in toClose)
+            {
+                try { p.CloseMainWindow(); } catch { }
+            }
+            Thread.Sleep(1500);
+            foreach (var p in Process.GetProcesses().Where(p => CloseList.Contains(p.ProcessName)))
+            {
+                try { p.Kill(); } catch { }
+            }
+
+            if (pausedNames.Count > 0)
+            {
+                log("PAUSE hue (kaam jaisa ka taisa rahega):");
+                foreach (var kv in pausedNames) log(string.Format("   {0,-26} {1,6:N0} MB", kv.Key, kv.Value));
+            }
+            var closedNames = toClose.Select(p => p.ProcessName).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (closedNames.Count > 0) log("BAND hue (OFF pe wapas khulenge): " + string.Join(", ", closedNames));
+            if (pausedNames.Count == 0 && closedNames.Count == 0) log("Koi background app khula nahi tha - RAM pehle se free hai.");
 
             SetBlueStacksPriority(ProcessPriorityClass.High);
-            if (!File.Exists(StateFile)) File.WriteAllText(StateFile, "");
             Thread.Sleep(1500);
             log(string.Format("GAME MODE ON!  Khali RAM: {0:N1} GB -> {1:N1} GB.  BlueStacks = HIGH priority.", before, Native.FreeRamGB()));
         }
@@ -122,36 +121,75 @@ namespace NabaGameBooster
         public static void Off(Action<string> log)
         {
             SetBlueStacksPriority(ProcessPriorityClass.Normal);
-            if (!File.Exists(StateFile))
+            if (!IsOn) { log("Game Mode ON nahi tha."); return; }
+
+            var lines = File.ReadAllLines(StateFile);
+            int resumed = 0;
+            var resumedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1) Paused apps chalu
+            foreach (var l in lines.Where(x => x.StartsWith("P|")))
             {
-                log("Game Mode ON nahi tha - kholne ke liye kuch nahi.");
-                return;
+                var f = l.Split('|');
+                int pid; long ticks;
+                if (f.Length < 4 || !int.TryParse(f[1], out pid) || !long.TryParse(f[2], out ticks)) continue;
+                if (!SameProcess(pid, ticks)) continue;   // process khatam ho chuka / PID kisi aur ka
+                if (Native.Resume(pid)) { resumed++; resumedNames.Add(f[3]); }
+            }
+            if (resumed > 0) log("CHALU hue (wahin se jahan ruke the): " + string.Join(", ", resumedNames.OrderBy(x => x)));
+
+            // 2) Band hue apps wapas kholo (normal user mode me, explorer ke through)
+            var running = new HashSet<string>(Process.GetProcesses().Select(p => p.ProcessName), StringComparer.OrdinalIgnoreCase);
+            foreach (var l in lines.Where(x => x.StartsWith("L|")))
+            {
+                string path = l.Substring(2);
+                if (!File.Exists(path)) continue;
+                string name = Path.GetFileNameWithoutExtension(path);
+                if (running.Contains(name)) continue;
+                try
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", "\"" + path + "\"") { UseShellExecute = false });
+                    log("   Wapas khula: " + name);
+                }
+                catch (Exception ex) { log("   " + name + " nahi khula: " + ex.Message); }
+                Thread.Sleep(600);
             }
 
-            var ids = File.ReadAllLines(StateFile).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
-            var runningNames = new HashSet<string>(Process.GetProcesses().Select(p => p.ProcessName), StringComparer.OrdinalIgnoreCase);
-            if (ids.Count > 0) log("Yeh apps wapas khul rahe hain:");
-            foreach (var id in ids)
-            {
-                string label;
-                if (id.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
-                {
-                    label = Regex.Replace(id, @"^shell:AppsFolder\\", "");
-                    label = label.Split('_')[0];
-                }
-                else
-                {
-                    if (!File.Exists(id)) continue;
-                    label = Path.GetFileNameWithoutExtension(id);
-                    if (runningNames.Contains(label)) continue;
-                }
-                // explorer se kholo taaki app normal (bina admin) mode me chale
-                try { Process.Start(new ProcessStartInfo("explorer.exe", "\"" + id + "\"") { UseShellExecute = false }); log("   " + label); }
-                catch (Exception ex) { log("   " + label + " nahi khula: " + ex.Message); }
-                Thread.Sleep(800);
-            }
             try { File.Delete(StateFile); } catch { }
-            log("GAME MODE OFF!  Sab apps wapas khul gaye.");
+            log("GAME MODE OFF!  Sab apps wapas chalu.");
+        }
+
+        /// <summary>App band ho rahi ho ya crash ke baad khule - paused apps kabhi atke na rahen.</summary>
+        public static void SafetyResume(Action<string> log)
+        {
+            if (!IsOn) return;
+            Off(log);
+        }
+
+        /// <summary>Restart ke baad purani state bekaar hai - paused process bache hi nahi to file hata do.</summary>
+        public static void CleanStaleState()
+        {
+            if (!IsOn) return;
+            try
+            {
+                bool anyAlive = File.ReadAllLines(StateFile).Where(x => x.StartsWith("P|")).Any(l =>
+                {
+                    var f = l.Split('|'); int pid; long ticks;
+                    return f.Length >= 4 && int.TryParse(f[1], out pid) && long.TryParse(f[2], out ticks) && SameProcess(pid, ticks);
+                });
+                if (!anyAlive) File.Delete(StateFile);
+            }
+            catch { }
+        }
+
+        private static bool SameProcess(int pid, long startTicksUtc)
+        {
+            try
+            {
+                var p = Process.GetProcessById(pid);
+                return Math.Abs(p.StartTime.ToUniversalTime().Ticks - startTicksUtc) < TimeSpan.TicksPerSecond;
+            }
+            catch { return false; }
         }
 
         private static void SetBlueStacksPriority(ProcessPriorityClass pc)
@@ -161,50 +199,6 @@ namespace NabaGameBooster
                 if (!p.ProcessName.StartsWith("HD-Player", StringComparison.OrdinalIgnoreCase)) continue;
                 try { p.PriorityClass = pc; } catch { }
             }
-        }
-
-        private static IntPtr SafeHandle(Process p)
-        {
-            try { return p.MainWindowHandle; } catch { return IntPtr.Zero; }
-        }
-
-        private static void TryCloseWindow(Process p)
-        {
-            try { p.CloseMainWindow(); } catch { }
-        }
-
-        /// <summary>App ko dobara kholne ka tarika: exe ka path, ya Store app ke liye shell:AppsFolder ID.</summary>
-        private static string LaunchId(Process p)
-        {
-            string path = Native.ProcessPath(p);
-            if (string.IsNullOrEmpty(path)) return null;
-
-            int wi = path.IndexOf(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase);
-            if (wi >= 0)
-            {
-                // ...\WindowsApps\Name_Version_Arch__PublisherId\...
-                string rest = path.Substring(wi + @"\WindowsApps\".Length);
-                string folder = rest.Split('\\')[0];
-                string[] parts = folder.Split('_');
-                if (parts.Length < 2) return null;
-                string pfn = parts[0] + "_" + parts[parts.Length - 1];
-                string appId = "App";
-                try
-                {
-                    string manifest = Path.Combine(path.Substring(0, wi + @"\WindowsApps\".Length) + folder, "AppxManifest.xml");
-                    if (File.Exists(manifest))
-                    {
-                        var m = Regex.Match(File.ReadAllText(manifest), @"<Application\b[^>]*?\sId=""([^""]+)""");
-                        if (m.Success) appId = m.Groups[1].Value;
-                    }
-                }
-                catch { }
-                return @"shell:AppsFolder\" + pfn + "!" + appId;
-            }
-
-            // Codex ke andar ke chhote helper (codex.exe) dobara nahi kholne
-            if (Path.GetFileName(path).Equals("codex.exe", StringComparison.OrdinalIgnoreCase)) return null;
-            return path;
         }
     }
 }

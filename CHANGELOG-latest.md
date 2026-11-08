@@ -1,9 +1,5 @@
-Pehla version:
-- Game Mode ON/OFF (background apps band, RAM khali, BlueStacks HIGH priority; OFF pe apps wapas)
-- Gaming Optimize (power plan, Windows Game Mode, Xbox recording off, GPU scheduling)
-- BlueStacks Optimize (PC ki RAM ke hisaab se)
-- Defender Exclusion (BlueStacks)
-- NVIDIA Setting (sirf NVIDIA card wale PC pe)
-- Mouse 1:1 / Mouse Default
-- Memory Integrity OFF / ON
-- Auto-update GitHub se
+v1.0.1 - Game Mode ab PAUSE karta hai:
+- Browser, Premiere, Animate, Photoshop, Telegram, Codex waghera PAUSE - project, tabs, video sab jaise ka taisa rehta hai, OFF pe wahin se chalu
+- Paused apps ki RAM bhi khali hoti hai
+- Google Drive / OneDrive / Epic sirf band hote hain (pause nahi) aur OFF pe wapas khulte hain - isse Windows nahi atakta
+- Safety: Game Mode ON rehte app band karo to sab apps khud chalu ho jaate hain
