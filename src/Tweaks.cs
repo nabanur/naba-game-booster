@@ -252,7 +252,7 @@ namespace NabaGameBooster
         /// <summary>One-Click Boost ke liye: profile ke hisaab se sab emulator tune.</summary>
         public static void BlueStacksApplyProfile(PcProfile p, Action<string> log)
         {
-            Settings.FpsLimit = p.Fps;
+            if (Settings.FpsLimit < 30) Settings.FpsLimit = p.Fps;   // user ne khud FPS chuna hai to wahi rahega
             BlueStacksOptimize(log);
             if (p.Width > 0) log(string.Format("     Resolution {0}x{1} (is PC ke liye halka)", p.Width, p.Height));
         }
@@ -320,20 +320,56 @@ namespace NabaGameBooster
         }
 
         // ---------------- Mouse ----------------
+        /// <summary>Acceleration OFF (1:1). Pehle ki setting backup hoti hai, OFF pe wahi wapas. Speed (sensi) nahi badalti.</summary>
         public static void MouseRaw(Action<string> log)
         {
             const string k = @"Control Panel\Mouse";
+            if (Settings.GetStr("MouseBackup") == null)
+            {
+                string bk = string.Join("|", new[] { "MouseSpeed", "MouseThreshold1", "MouseThreshold2", "MouseSensitivity" }
+                    .Select(n => Status.RegStr(Registry.CurrentUser, k, n) ?? ""));
+                Settings.SetStr("MouseBackup", bk);
+            }
             SetString(Registry.CurrentUser, k, "MouseSpeed", "0");
             SetString(Registry.CurrentUser, k, "MouseThreshold1", "0");
             SetString(Registry.CurrentUser, k, "MouseThreshold2", "0");
-            SetString(Registry.CurrentUser, k, "MouseSensitivity", "10");
             Native.SetMouseAcceleration(0, 0, 0);
-            Native.SetMouseSpeed(10);
-            log("[OK] Mouse 1:1 - acceleration OFF, speed 10/20 (turant laga)");
-            ResetMouseCurves();
-            log("[OK] Mouse curve Windows default pe (koi chhupi smoothing nahi)");
-            UsbSuspend(false, log);
+            log("[OK] Mouse acceleration OFF - speed (sensi) wahi rakhi jo pehle thi");
         }
+
+        /// <summary>Acceleration wapas: backup ho to bilkul pehle jaisa, warna Windows default.</summary>
+        public static void MouseDefault(Action<string> log)
+        {
+            const string k = @"Control Panel\Mouse";
+            var bk = (Settings.GetStr("MouseBackup") ?? "").Split('|');
+            if (bk.Length == 4 && bk[0] != "")
+            {
+                SetString(Registry.CurrentUser, k, "MouseSpeed", bk[0]);
+                SetString(Registry.CurrentUser, k, "MouseThreshold1", bk[1]);
+                SetString(Registry.CurrentUser, k, "MouseThreshold2", bk[2]);
+                if (bk[3] != "") SetString(Registry.CurrentUser, k, "MouseSensitivity", bk[3]);
+                int a, t1, t2, sp;
+                int.TryParse(bk[0], out a); int.TryParse(bk[1], out t1); int.TryParse(bk[2], out t2);
+                Native.SetMouseAcceleration(t1, t2, a);
+                if (int.TryParse(bk[3], out sp)) Native.SetMouseSpeed(sp);
+                Settings.SetStr("MouseBackup", null);
+                log("[OK] Mouse bilkul pehle jaisa wapas (acceleration + speed)");
+            }
+            else
+            {
+                SetString(Registry.CurrentUser, k, "MouseSpeed", "1");
+                SetString(Registry.CurrentUser, k, "MouseThreshold1", "6");
+                SetString(Registry.CurrentUser, k, "MouseThreshold2", "10");
+                SetString(Registry.CurrentUser, k, "MouseSensitivity", "10");
+                Native.SetMouseAcceleration(6, 10, 1);
+                Native.SetMouseSpeed(10);
+                log("[OK] Mouse Windows default pe wapas (acceleration ON, speed 10)");
+            }
+        }
+
+        /// <summary>Pro Mouse (stable): sirf USB power saving band. Sensi bilkul nahi chhedta.</summary>
+        public static void MouseStableOn(Action<string> log) { UsbSuspend(false, log); log("[OK] Pro Mouse ON - sensi same, signal ab nahi atkega"); }
+        public static void MouseStableOff(Action<string> log) { UsbSuspend(true, log); }
 
         private const string UsbSub = "2a737441-1930-4402-8d77-b2bebba308a3", UsbSet = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
 
@@ -347,33 +383,6 @@ namespace NabaGameBooster
             log(enable ? "[OK] USB power saving wapas chalu" : "[OK] USB power saving band - mouse signal nahi atkega");
         }
 
-        private static void ResetMouseCurves()
-        {
-            try
-            {
-                using (var k = Registry.CurrentUser.CreateSubKey(@"Control Panel\Mouse"))
-                {
-                    k.SetValue("SmoothMouseXCurve", new byte[] {
-                        0,0,0,0,0,0,0,0, 0xC0,0xCC,0x0C,0,0,0,0,0, 0x80,0x99,0x19,0,0,0,0,0, 0x40,0x66,0x26,0,0,0,0,0, 0x00,0x33,0x33,0,0,0,0,0 }, RegistryValueKind.Binary);
-                    k.SetValue("SmoothMouseYCurve", new byte[] {
-                        0,0,0,0,0,0,0,0, 0,0,0x38,0,0,0,0,0, 0,0,0x70,0,0,0,0,0, 0,0,0xA8,0,0,0,0,0, 0,0,0xE0,0,0,0,0,0 }, RegistryValueKind.Binary);
-                }
-            }
-            catch { }
-        }
-
-        public static void MouseDefault(Action<string> log)
-        {
-            const string k = @"Control Panel\Mouse";
-            SetString(Registry.CurrentUser, k, "MouseSpeed", "1");
-            SetString(Registry.CurrentUser, k, "MouseThreshold1", "6");
-            SetString(Registry.CurrentUser, k, "MouseThreshold2", "10");
-            SetString(Registry.CurrentUser, k, "MouseSensitivity", "10");
-            Native.SetMouseAcceleration(6, 10, 1);
-            Native.SetMouseSpeed(10);
-            log("[OK] Mouse Windows default pe wapas");
-            UsbSuspend(true, log);
-        }
 
         // ---------------- Memory Integrity ----------------
         public static void MemoryIntegrity(bool on, Action<string> log)

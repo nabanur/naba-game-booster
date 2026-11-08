@@ -27,6 +27,24 @@ namespace NabaGameBooster
             catch { }
         }
 
+        public static string GetStr(string name)
+        {
+            try { using (var k = Registry.CurrentUser.OpenSubKey(Key)) return k == null ? null : k.GetValue(name) as string; }
+            catch { return null; }
+        }
+
+        public static void SetStr(string name, string value)
+        {
+            try
+            {
+                using (var k = Registry.CurrentUser.CreateSubKey(Key))
+                {
+                    if (value == null) k.DeleteValue(name, false); else k.SetValue(name, value, RegistryValueKind.String);
+                }
+            }
+            catch { }
+        }
+
         public static int GetInt(string name, int def)
         {
             try

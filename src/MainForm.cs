@@ -322,7 +322,7 @@ namespace NabaGameBooster
             mg.Controls.Add(new Label { Text = (ghub != null ? "Logitech G HUB" : "Mouse software (G HUB / Razer / Redragon...)") + " me ye karo:", Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(48, 10), Size = new Size(390, 20), BackColor = Color.Transparent, AutoEllipsis = true });
             mg.Controls.Add(new Label
             {
-                Text = "•  Report rate / Polling:  1000 Hz\n•  DPI:  800 ya 1600 - ek hi fix rakho\n•  DPI shift / DPI button band\n•  Phir game me sensitivity thodi kam karo",
+                Text = "•  Report rate / Polling:  1000 Hz  (sensi nahi badalti)\n•  DPI wahi rakho jo pehle tha - DPI badla to sensi badlegi\n•  DPI shift / DPI button band (galti se na badle)\n•  Mousepad saaf, sensor pe dhool nahi",
                 Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(48, 34), Size = new Size(ghub != null ? 272 : 392, 90), BackColor = Color.Transparent
             });
             if (ghub != null)
@@ -366,7 +366,7 @@ namespace NabaGameBooster
                 "- Turbo, ASTC, Defender exclusion{8}\n" +
                 "- RAM Cleaner, Watchdog, Timer\n\n" +
                 "Dhyan do: Fast Mode se WSL / Docker / Windows Sandbox nahi chalenge.\nShuru karein?",
-                pc.TierName, pc.Cpu, pc.Gpu, pc.RamGb, pc.BsRamMb / 1024, pc.BsCpus, pc.Fps,
+                pc.TierName, pc.Cpu, pc.Gpu, pc.RamGb, pc.BsRamMb / 1024, pc.BsCpus, Settings.FpsLimit >= 30 ? Settings.FpsLimit : pc.Fps,
                 pc.Width > 0 ? ", " + pc.Width + "x" + pc.Height : "",
                 nvidiaName != null ? ", NVIDIA Boost" : "");
             if (!Ask(msg)) return;
@@ -509,9 +509,17 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "Pro Mouse  (aim stable)", Icon = "mouse",
-                GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
+                Title = "Pro Mouse  (stable, sensi same)", Icon = "mouse",
+                GetState = x => { var st = Status.MouseStable(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
+                On = Tweaks.MouseStableOn, Off = Tweaks.MouseStableOff
+            });
+            AddFeature(host, new Feature
+            {
+                Title = "Mouse Acceleration OFF  (1:1)", Icon = "mouse",
+                GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
+                ConfirmOn = () => Ask("Acceleration OFF karne se aim 1:1 hota hai (pro setting), lekin haath ka feel badal jata hai - shuru me sensi alag lagegi.\n\nOFF karoge to bilkul pehle jaisa wapas aa jayega. Lagaun?"),
+                ConfirmOff = () => true,
                 On = Tweaks.MouseRaw, Off = Tweaks.MouseDefault
             });
             AddFeature(host, new Feature

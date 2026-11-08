@@ -47,7 +47,7 @@ namespace NabaGameBooster
             try { return Convert.ToInt32(v); } catch { return null; }
         }
 
-        private static string RegStr(RegistryKey root, string path, string name)
+        public static string RegStr(RegistryKey root, string path, string name)
         {
             var v = Reg(root, path, name);
             return v == null ? null : v.ToString();
@@ -163,10 +163,16 @@ namespace NabaGameBooster
                     && RegStr(Registry.CurrentUser, k, "MouseThreshold1") == "0"
                     && RegStr(Registry.CurrentUser, k, "MouseThreshold2") == "0";
             string sens = RegStr(Registry.CurrentUser, k, "MouseSensitivity") ?? "10";
-            bool? usbOff = UsbSuspendOff();
-            if (raw && usbOff != false) { detail = "1:1 aim  •  acceleration OFF  •  USB power saving band"; return FeatureState.On; }
-            if (raw) { detail = "USB power saving chalu hai - switch dabao"; return FeatureState.Partial; }
-            detail = "Windows acceleration chalu hai - aim hilta hai";
+            detail = raw ? "1:1 aim  •  speed " + sens + "/20 (sensi nahi chheda)" : "Acceleration chalu  •  speed " + sens + "/20";
+            return raw ? FeatureState.On : FeatureState.Off;
+        }
+
+        public static FeatureState MouseStable(out string detail)
+        {
+            bool? off = UsbSuspendOff();
+            if (off == true) { detail = "USB power saving band - mouse signal nahi atkega"; return FeatureState.On; }
+            if (off == null) { detail = "Is PC pe USB setting nahi mili"; return FeatureState.NotAvailable; }
+            detail = "Windows USB ko sula deta hai - mouse beech me atakta hai";
             return FeatureState.Off;
         }
 

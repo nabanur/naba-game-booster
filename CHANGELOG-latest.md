@@ -1,4 +1,6 @@
-## Naba Game Booster v1.8.1 — Bina popup ke khule
+## Naba Game Booster v1.8.2
 
-- Ab har baar Windows ka "Yes / No" (UAC) popup nahi aayega — ek baar permission ke baad shortcut double-click se app seedha khulegi
-- (Andar se: Windows Task Scheduler me "highest privileges" task, jaise pro gaming apps karte hain. Uninstall par task bhi hat jata hai)
+- FPS fix: One-Click Boost ab aapki chuni hui FPS limit (Badlo se) nahi badlega — pehle har boost pe monitor Hz (100) pe aa jata tha
+- Mouse fix: "Pro Mouse (stable, sensi same)" ab sirf mouse signal stable karta hai (USB power saving band) — sensi bilkul nahi chhedta
+- Acceleration OFF ab alag switch hai; OFF karne par mouse bilkul pehle jaisa (backup se) ya Windows default wapas
+- Mouse guide: DPI wahi rakho jo pehle tha

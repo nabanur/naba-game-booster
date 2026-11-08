@@ -88,7 +88,7 @@ namespace NabaGameBooster
 
             Add("PC check", () => true, log => log(pc.TierName + " PC pehchana"));
             Add("Windows power + Game Mode", () => true, Tweaks.GamingOptimize);
-            Add(string.Format("BlueStacks / MSI tune  (RAM {0} GB, CPU {1}, FPS {2})", pc.BsRamMb / 1024, pc.BsCpus, pc.Fps), () => emu, log => Tweaks.BlueStacksApplyProfile(pc, log));
+            Add(string.Format("BlueStacks / MSI tune  (RAM {0} GB, CPU {1}, FPS {2})", pc.BsRamMb / 1024, pc.BsCpus, Settings.FpsLimit >= 30 ? Settings.FpsLimit : pc.Fps), () => emu, log => Tweaks.BlueStacksApplyProfile(pc, log));
             Add("Fast Mode - Hyper-V band", () => emu, Booster.FastModeOn);
             Add("BlueStacks Turbo - priority + GPU", () => emu, Booster.TurboOn);
             Add("ASTC - textures GPU pe", () => emu, Tweaks.AstcOn);
