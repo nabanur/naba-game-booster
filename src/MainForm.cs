@@ -49,8 +49,7 @@ namespace NabaGameBooster
         private int startupTop;
         private readonly List<Control> startupRows = new List<Control>();
         private Label startupSummary;
-        private Label fpsBefore, fpsAfter, fpsDiff;
-        private RoundButton fpsBtn1, fpsBtn2, fpsSave;
+
 
         private static bool AutoUpdateEnabled
         {
@@ -245,34 +244,6 @@ namespace NabaGameBooster
             scroll.Controls.Add(guide);
             y += 78;
 
-            // ---- FPS test ----
-            scroll.Controls.Add(SectionLabel("FPS TEST  (asli FPS, pehle vs baad)", 10, y)); y += 26;
-            var ft = new Card { Location = new Point(8, y), Size = new Size(452, 176), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            ft.Controls.Add(new Label
-            {
-                Text = "Free Fire training ground me jao. Button dabao, 5 second me game me wapas jao aur 60 second normal khelo.",
-                Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(12, 8), Size = new Size(428, 34), BackColor = Color.Transparent
-            });
-            fpsBtn1 = new RoundButton { Text = "Test 1: Bina boost", Location = new Point(12, 46), Size = new Size(208, 34), Fill = Theme.Card, Font = Theme.Semi(9F), Radius = 8 };
-            fpsBtn2 = new RoundButton { Text = "Test 2: Boost ke saath", Location = new Point(232, 46), Size = new Size(208, 34), Fill = Theme.Green, Fill2 = Theme.GreenDark, Font = Theme.Semi(9F), Radius = 8 };
-            fpsBtn1.Click += (s, e) => RunFps("Before");
-            fpsBtn2.Click += (s, e) => RunFps("After");
-            fpsBefore = new Label { Location = new Point(12, 88), Size = new Size(208, 40), Font = Theme.Semi(10F), ForeColor = Theme.SubText, BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleCenter };
-            fpsAfter = new Label { Location = new Point(232, 88), Size = new Size(208, 40), Font = Theme.Semi(10F), ForeColor = Theme.Green, BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleCenter };
-            fpsDiff = new Label { Location = new Point(12, 134), Size = new Size(280, 30), Font = Theme.Semi(11F), ForeColor = Theme.Accent, BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleLeft };
-            fpsSave = new RoundButton { Text = "Result card save", Location = new Point(300, 134), Size = new Size(140, 30), Fill = Theme.Card, Font = Theme.Semi(8.5F), Radius = 8 };
-            fpsSave.Click += (s, e) =>
-            {
-                string f = FpsTest.SaveCard(nvidiaName);
-                if (f == null) { Info("Pehle Test 1 aur Test 2 dono karo."); return; }
-                Log("Result card Desktop pe save hua: " + Path.GetFileName(f));
-                try { Process.Start(new ProcessStartInfo("explorer.exe", "/select,\"" + f + "\"") { UseShellExecute = false }); } catch { }
-            };
-            ft.Controls.AddRange(new Control[] { fpsBtn1, fpsBtn2, fpsBefore, fpsAfter, fpsDiff, fpsSave });
-            scroll.Controls.Add(ft);
-            y += 190;
-            ShowFpsResults();
-
             // ---- Startup apps ----
             scroll.Controls.Add(SectionLabel("STARTUP APPS", 10, y));
             startupSummary = new Label { Location = new Point(124, y + 1), Size = new Size(240, 18), ForeColor = Theme.SubText, Font = Theme.F(8.5F), BackColor = Color.Transparent, Text = "Load ho raha hai..." };
@@ -297,45 +268,13 @@ namespace NabaGameBooster
                 "     option, Shadow OFF.\n" +
                 "5.  Khelne se pehle Naba me GAME MODE START dabao.\n\n" +
                 "240 ek upar ki limit hai - asli FPS PC aur game ke scene pe depend karta hai.\n" +
-                "FPS TEST se apna asli number dekh lo.\n\n" +
+                "BlueStacks ke FPS counter me apna asli number dekh lo.\n\n" +
                 "BlueStacks ka 240 FPS guide page kholna hai?";
             if (MessageBox.Show(this, msg, "240 FPS Guide", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
             {
                 try { Process.Start(new ProcessStartInfo("explorer.exe", "\"https://www.bluestacks.com/blog/bluestacks-exclusives/ffm-high-fps-guide-en.html\"") { UseShellExecute = false }); }
                 catch { }
             }
-        }
-
-        private void ShowFpsResults()
-        {
-            double a, l;
-            fpsBefore.Text = FpsTest.Load("Before", out a, out l) ? string.Format("{0:N0} FPS\n1% low {1:N0}", a, l) : "Test 1 baaki";
-            double a2, l2;
-            fpsAfter.Text = FpsTest.Load("After", out a2, out l2) ? string.Format("{0:N0} FPS\n1% low {1:N0}", a2, l2) : "Test 2 baaki";
-            if (a > 0 && a2 > 0)
-            {
-                double d = a2 - a;
-                fpsDiff.Text = d >= 0 ? string.Format("+{0:N0} FPS  ({1:N0}% zyada)", d, d / a * 100) : string.Format("{0:N0} FPS - boost check karo", d);
-                fpsDiff.ForeColor = d >= 0 ? Theme.Accent : Theme.Red;
-            }
-            else fpsDiff.Text = "";
-        }
-
-        private void RunFps(string which)
-        {
-            if (busy) return;
-            if (!FpsTest.ToolAvailable) { Info("FPS test tool nahi mila - app ka naya version install karo."); return; }
-            if (!Emulators.AnyRunning) { Info("Pehle BlueStacks / MSI me Free Fire kholo, training ground me jao, phir test dabao."); return; }
-            if (which == "After" && !GameMode.IsOn && !Ask("Game Mode abhi OFF hai. Boost wala test Game Mode START karke karna chahiye.\n\nPhir bhi abhi test karna hai?")) return;
-            RunJob(which == "Before" ? "FPS Test 1 (bina boost)" : "FPS Test 2 (boost ke saath)", log =>
-            {
-                for (int i = 5; i > 0; i--) { log("Game me jao... " + i); System.Threading.Thread.Sleep(1000); }
-                log("FPS gin raha hoon - 60 second normal khelo...");
-                var r = FpsTest.Measure(60, log);
-                FpsTest.Save(which, r);
-                log(string.Format("Result: Average {0:N0} FPS  •  1% low {1:N0}  •  Sabse kam {2:N0}  ({3} frames)", r.Avg, r.Low1, r.Min, r.Frames));
-                BeginInvoke(new Action(ShowFpsResults));
-            });
         }
 
         // ================= Optimize tab =================

@@ -24,7 +24,6 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | RAM Cleaner | Game Mode me cache (standby) RAM har 5 min saaf |
 | Timer 0.5ms | Game Mode me Windows timer 0.5ms - smooth frames |
 | Startup Apps | PC chalu hote hi khulne wale apps band/chalu |
-| FPS Test | Asli FPS pehle vs baad (Intel PresentMon), result card |
 | 240 FPS | BlueStacks/MSI FPS limit 240 + NVIDIA VSync off + guide |
 
 ## Naya version kaise nikale
@@ -37,6 +36,5 @@ GitHub Actions khud build karke Release bana dega. Saare PCs pe "Update karo" aa
 
 ## Third-party
 - [NVIDIA Profile Inspector](https://github.com/Orbmu2k/nvidiaProfileInspector) (MIT) - NVIDIA settings
-- [Intel PresentMon](https://github.com/GameTechDev/PresentMon) (MIT) - FPS test
 
 Details: `THIRD-PARTY-NOTICES.txt` (app folder me).
