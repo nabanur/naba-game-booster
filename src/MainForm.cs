@@ -149,14 +149,13 @@ namespace NabaGameBooster
             var sub = new Label { Text = "BlueStacks / MSI App Player   •   Free Fire FPS booster   •   v" + Updater.CurrentText, Font = Theme.F(9.5F), ForeColor = Theme.SubText, AutoSize = true, Location = new Point(94, 56), BackColor = Color.Transparent };
             Controls.AddRange(new Control[] { logo, title, sub });
 
-            checkBtn = new RoundButton { Text = "Update check", IconName = "refresh", Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Location = new Point(680, 16), Size = new Size(166, 46), Font = Theme.Semi(10F) };
+            checkBtn = new RoundButton { Text = "Update check", IconName = "refresh", Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Location = new Point(684, 16), Size = new Size(164, 46), Font = Theme.Semi(10F) };
             checkBtn.Click += (s, e) => CheckUpdates(true);
             Controls.Add(checkBtn);
 
-            var autoLbl = new Label { Text = "Auto update", ForeColor = Theme.Text, Font = Theme.F(9.5F), AutoSize = true, Location = new Point(566, 29), BackColor = Color.Transparent };
-            autoToggle = new ToggleSwitch { Location = new Point(632, 25), Size = new Size(46, 26) };
-            autoLbl.Location = new Point(560, 29);
-            autoToggle.Location = new Point(632, 26);
+            autoToggle = new ToggleSwitch { Location = new Point(620, 22), Size = new Size(56, 32) };
+            var autoLbl = new Label { Text = "Auto update", ForeColor = Theme.Text, Font = Theme.F(9.5F), AutoSize = true, BackColor = Color.Transparent };
+            autoLbl.Location = new Point(autoToggle.Left - autoLbl.PreferredWidth - 6, 29);   // text hamesha switch se pehle khatam
             autoToggle.Checked = AutoUpdateEnabled;
             autoToggle.Toggled += (s, e) =>
             {
@@ -164,7 +163,7 @@ namespace NabaGameBooster
                 autoToggle.Checked = AutoUpdateEnabled;
                 Log(AutoUpdateEnabled ? "Auto update ON - naya version khud lag jayega." : "Auto update OFF - update ke liye button dabana hoga.");
             };
-            Controls.Add(autoLbl); Controls.Add(autoToggle);
+            Controls.Add(autoToggle); Controls.Add(autoLbl); autoToggle.BringToFront();
 
             updateStrip = new Card { Location = new Point(8, 84), Size = new Size(844, 58), Neon = true, ChamferSize = 12, NeonA = Theme.Green, NeonB = Color.FromArgb(40, 200, 160), Fill = Color.FromArgb(14, 26, 26) };
             var tick = new IconBox { IconName = "check", IconColor = Theme.Green, Location = new Point(30, 18), Size = new Size(24, 24) };
@@ -198,7 +197,7 @@ namespace NabaGameBooster
             var aiRow = new Card { Location = new Point(20, 256), Size = new Size(292, 42), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
             aiRow.Controls.Add(new IconBox { IconName = "chat", Location = new Point(10, 9), Size = new Size(24, 24) });
             aiRow.Controls.Add(new Label { Text = "Claude / ChatGPT bhi pause", Font = Theme.F(9.5F), ForeColor = Theme.Text, Location = new Point(42, 11), AutoSize = true, BackColor = Color.Transparent });
-            aiToggle = new ToggleSwitch { Location = new Point(236, 8), Size = new Size(48, 26) };
+            aiToggle = new ToggleSwitch { Location = new Point(232, 6), Size = new Size(54, 30) };
             aiToggle.Checked = Settings.PauseAiApps;
             aiToggle.Toggled += (s, e) =>
             {
@@ -211,7 +210,7 @@ namespace NabaGameBooster
             var svRow = new Card { Location = new Point(20, 304), Size = new Size(292, 42), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
             svRow.Controls.Add(new IconBox { IconName = "windows", Location = new Point(10, 9), Size = new Size(24, 24) });
             svRow.Controls.Add(new Label { Text = "Windows Update / Search band", Font = Theme.F(9.5F), ForeColor = Theme.Text, Location = new Point(42, 11), AutoSize = true, BackColor = Color.Transparent });
-            var svToggle = new ToggleSwitch { Location = new Point(236, 8), Size = new Size(48, 26) };
+            var svToggle = new ToggleSwitch { Location = new Point(232, 6), Size = new Size(54, 30) };
             svToggle.Checked = Settings.PauseServices;
             svToggle.Toggled += (s, e) =>
             {
@@ -502,7 +501,7 @@ namespace NabaGameBooster
             var title = new Label { Text = f.Title, Font = Theme.Semi(10.5F), ForeColor = Theme.Text, Location = new Point(48, 4), AutoSize = true, BackColor = Color.Transparent };
             f.Detail = new Label { Text = "...", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(48, 26), Size = new Size(240, 17), BackColor = Color.Transparent, AutoEllipsis = true };
             f.Pill = new Pill { Location = new Point(292, 11), Size = new Size(86, 27) };
-            f.Toggle = new ToggleSwitch { Location = new Point(388, 11), Size = new Size(52, 27) };
+            f.Toggle = new ToggleSwitch { Location = new Point(386, 9), Size = new Size(56, 30) };
             f.Toggle.Toggled += (s, e) => OnToggle(f);
             row.Controls.AddRange(new Control[] { title, f.Detail, f.Pill, f.Toggle });
             parent.Controls.Add(row);
@@ -552,7 +551,7 @@ namespace NabaGameBooster
                 row.Controls.Add(new IconBox { IconName = "list", Location = new Point(12, 12), Size = new Size(22, 22) });
                 var name = new Label { Text = item.Name, Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(44, 4), Size = new Size(300, 19), AutoEllipsis = true, BackColor = Color.Transparent };
                 var cmd = new Label { Text = (item.Protected ? "Windows Security - band nahi kar sakte  •  " : item.Source + "  •  ") + item.Command, Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(44, 25), Size = new Size(320, 16), AutoEllipsis = true, BackColor = Color.Transparent };
-                var tg = new ToggleSwitch { Location = new Point(388, 10), Size = new Size(52, 27), Enabled = !item.Protected };
+                var tg = new ToggleSwitch { Location = new Point(386, 8), Size = new Size(56, 30), Enabled = !item.Protected };
                 tg.Checked = item.Enabled;
                 tg.Toggled += (s, e) =>
                 {

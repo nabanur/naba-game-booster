@@ -509,12 +509,13 @@ namespace NabaGameBooster
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics; Theme.Smooth(g);
-            var r = new RectangleF(3, 3, Width - 7, Height - 7);
+            float th = Math.Min(22f, Height - 10f), tw = Math.Min(Width - 10f, th * 1.9f);
+            var r = new RectangleF((Width - tw) / 2f, (Height - th) / 2f, tw, th);
             Color track = Theme.Mix(Color.FromArgb(52, 56, 80), OnColor, knob);
             if (!Enabled) track = Color.FromArgb(40, 42, 60);
             using (var p = Theme.Round(r, r.Height / 2))
             {
-                if (Enabled && knob > 0.3f) Theme.Glow(g, p, OnColor, 2, 1f, (int)(90 * knob));
+                if (Enabled && knob > 0.3f) Theme.Glow(g, p, OnColor, 1, 1.2f, (int)(110 * knob));
                 using (var b = new SolidBrush(track)) g.FillPath(b, p);
             }
             float d = r.Height - 6;
