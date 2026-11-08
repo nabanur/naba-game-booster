@@ -1,0 +1,72 @@
+name: Build & Release
+
+# Naya version: "v1.2.0" jaisa tag push karo -> GitHub khud app build karke Release bana dega.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (jaise 1.0.1)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version tay karo
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") { $v = "${{ github.event.inputs.version }}" }
+          else { $v = "${{ github.ref_name }}".TrimStart('v') }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Version galat hai: $v (aisa hona chahiye: 1.2.3)" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $v"
+
+      - name: App build karo
+        shell: pwsh
+        run: |
+          dotnet build src/NabaGameBooster.csproj -c Release -p:Version=${{ steps.ver.outputs.version }} -o build
+          Remove-Item build\*.pdb -ErrorAction SilentlyContinue
+          Get-ChildItem build -Recurse | Select-Object FullName, Length
+
+      - name: NVIDIA Profile Inspector (MIT) saath me daalo
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $rel = Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; 'User-Agent' = 'naba-build' } `
+                 -Uri 'https://api.github.com/repos/Orbmu2k/nvidiaProfileInspector/releases/latest'
+          $asset = $rel.assets | Where-Object { $_.name -like '*.zip' } | Select-Object -First 1
+          Write-Host "NVIDIA Profile Inspector $($rel.tag_name): $($asset.name)"
+          Invoke-WebRequest $asset.browser_download_url -OutFile npi.zip
+          New-Item -ItemType Directory -Force build\tools\nvidiaProfileInspector | Out-Null
+          Expand-Archive npi.zip -DestinationPath build\tools\nvidiaProfileInspector -Force
+          # Kabhi zip ke andar ek extra folder hota hai - exe ko upar le aao
+          $exe = Get-ChildItem build\tools\nvidiaProfileInspector -Recurse -Filter nvidiaProfileInspector.exe | Select-Object -First 1
+          if (-not $exe) { throw "nvidiaProfileInspector.exe nahi mila" }
+          if ($exe.DirectoryName -ne (Resolve-Path build\tools\nvidiaProfileInspector).Path) {
+            Get-ChildItem $exe.DirectoryName | Move-Item -Destination build\tools\nvidiaProfileInspector -Force
+          }
+          Test-Path build\tools\naba.nip
+
+      - name: Installer banao (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.ver.outputs.version }} installer\NabaGameBooster.iss
+          Get-ChildItem installer\Output
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Naba Game Booster v${{ steps.ver.outputs.version }}
+          body_path: CHANGELOG-latest.md
+          files: installer/Output/NabaGameBooster-Setup.exe
