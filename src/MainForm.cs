@@ -145,7 +145,7 @@ namespace NabaGameBooster
         private void BuildHeader()
         {
             var logo = new Logo { Location = new Point(14, 8), Size = new Size(72, 72) };
-            var title = new HeaderTitle { Location = new Point(90, 10), Size = new Size(470, 46) };
+            var title = new HeaderTitle { Location = new Point(90, 10), Size = new Size(430, 46) };
             var sub = new Label { Text = "BlueStacks / MSI App Player   •   Free Fire FPS booster   •   v" + Updater.CurrentText, Font = Theme.F(9.5F), ForeColor = Theme.SubText, AutoSize = true, Location = new Point(94, 56), BackColor = Color.Transparent };
             Controls.AddRange(new Control[] { logo, title, sub });
 
@@ -163,7 +163,7 @@ namespace NabaGameBooster
                 autoToggle.Checked = AutoUpdateEnabled;
                 Log(AutoUpdateEnabled ? "Auto update ON - naya version khud lag jayega." : "Auto update OFF - update ke liye button dabana hoga.");
             };
-            Controls.Add(autoToggle); Controls.Add(autoLbl); autoToggle.BringToFront();
+            Controls.Add(autoToggle); Controls.Add(autoLbl); autoLbl.BringToFront(); autoToggle.BringToFront();
 
             updateStrip = new Card { Location = new Point(8, 84), Size = new Size(844, 58), Neon = true, ChamferSize = 12, NeonA = Theme.Green, NeonB = Color.FromArgb(40, 200, 160), Fill = Color.FromArgb(14, 26, 26) };
             var tick = new IconBox { IconName = "check", IconColor = Theme.Green, Location = new Point(30, 18), Size = new Size(24, 24) };
@@ -756,7 +756,7 @@ namespace NabaGameBooster
                     var info = t.Result;
                     if (info == null)
                     {
-                        updateText.Text = "✓  Aap latest version pe ho  (v" + Updater.CurrentText + ")";
+                        updateText.Text = "Aap latest version pe ho  (v" + Updater.CurrentText + ")";
                         updateText.ForeColor = Theme.Green;
                         updateNow.Visible = false;
                         if (manual) Log("Aap latest version pe ho.");

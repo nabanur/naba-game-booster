@@ -11,7 +11,7 @@
     <ApplicationIcon>..\assets\icon.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
-    <Version>1.7.1</Version>
+    <Version>1.7.2</Version>
     <Product>Naba Game Booster</Product>
     <Company>Naba</Company>
     <Copyright>Naba</Copyright>
