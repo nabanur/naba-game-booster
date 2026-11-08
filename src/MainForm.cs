@@ -68,7 +68,9 @@ namespace NabaGameBooster
                 backdrop = Backdrop.Render(ClientSize.Width, ClientSize.Height);
             }
             e.Graphics.DrawImageUnscaled(backdrop, 0, 0);
+            if (streaks != null) streaks.Paint(e.Graphics);
         }
+        private Streaks streaks;
 
         public MainForm()
         {
@@ -83,6 +85,9 @@ namespace NabaGameBooster
             ForeColor = Theme.Text;
             Font = Theme.F(9.5F);
             DoubleBuffered = true;
+            Anim.Blocked = () => GameMode.IsOn;
+            Anim.Attach(this);
+            streaks = new Streaks(this);
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             nvidiaName = Tweaks.NvidiaGpuName();
@@ -176,7 +181,7 @@ namespace NabaGameBooster
         {
             var card = new Card { Location = new Point(8, 146), Size = new Size(332, 360), Neon = true };
             card.Controls.Add(SectionLabel("GAME MODE", 24, 20));
-            gmButton = new RoundButton { Location = new Point(18, 54), Size = new Size(296, 132), ChamferShape = true, IconName = "play", Font = Theme.Heavy(26F) };
+            gmButton = new RoundButton { Pulse = true, Location = new Point(18, 54), Size = new Size(296, 132), ChamferShape = true, IconName = "play", Font = Theme.Heavy(26F) };
             gmButton.Click += (s, e) =>
             {
                 if (busy) return;
@@ -261,7 +266,7 @@ namespace NabaGameBooster
             boostCard.Controls.Add(new Label { Text = "PC dekh ke saari best settings ek saath", Font = Theme.F(9F), ForeColor = Color.FromArgb(255, 190, 120), Location = new Point(55, 50), Size = new Size(230, 18), BackColor = Color.Transparent });
             profileLbl = new Label { Text = "PC check ho raha hai...", Font = Theme.Semi(9F), ForeColor = Theme.Text, Location = new Point(22, 78), Size = new Size(262, 22), BackColor = Color.Transparent, AutoEllipsis = true };
             boostCard.Controls.Add(profileLbl);
-            var boostBtn = new RoundButton { Text = "BOOST", IconName = "bolt", ChamferShape = true, GlowColor = Theme.Accent, Location = new Point(282, 20), Size = new Size(160, 80), Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(17F) };
+            var boostBtn = new RoundButton { Pulse = true, Lightning = true, Text = "BOOST", IconName = "bolt", ChamferShape = true, GlowColor = Theme.Accent, Location = new Point(282, 20), Size = new Size(160, 80), Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(17F) };
             boostBtn.Click += (s, e) => OneClickBoost();
             boostCard.Controls.Add(boostBtn);
             allButtons.Add(boostBtn);

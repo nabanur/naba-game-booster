@@ -107,6 +107,137 @@ namespace NabaGameBooster
         }
     }
 
+    // ======================= ANIMATION ENGINE =======================
+    /// <summary>
+    /// Saari animation yahin se chalti hai. Sirf tab chalti hai jab app samne ho aur mouse
+    /// app ke andar ho. Minimize / peeche / mouse bahar / Game Mode ON = sab band, 0% CPU.
+    /// </summary>
+    internal static class Anim
+    {
+        private static Form owner;
+        private static readonly Timer fast = new Timer { Interval = 33 };
+        private static readonly Timer poll = new Timer { Interval = 150 };
+        private static readonly System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+        public static bool Active { get; private set; }
+        public static float T { get { return (float)sw.Elapsed.TotalSeconds; } }
+        public static event EventHandler Frame;
+        public static Func<bool> Blocked;
+        public static readonly Random Rnd = new Random();
+
+        public static void Attach(Form f)
+        {
+            owner = f;
+            fast.Tick += (s, e) => Raise();
+            poll.Tick += (s, e) => Check();
+            poll.Start();
+        }
+
+        private static void Check()
+        {
+            bool want = false;
+            try
+            {
+                want = owner != null && owner.Visible && owner.WindowState != FormWindowState.Minimized
+                       && Form.ActiveForm == owner && owner.Bounds.Contains(Cursor.Position)
+                       && !(Blocked != null && Blocked());
+            }
+            catch { }
+            if (want == Active) return;
+            Active = want;
+            if (want) fast.Start();
+            else { fast.Stop(); Raise(); }   // ek aakhri frame - sab static ho jaye
+        }
+
+        private static void Raise()
+        {
+            var h = Frame;
+            if (h != null) try { h(null, EventArgs.Empty); } catch { }
+        }
+
+        /// <summary>0..1 saans jaisa (sin). Band ho to 0.5.</summary>
+        public static float Pulse(float speed)
+        {
+            return Active ? 0.5f + 0.5f * (float)Math.Sin(T * speed * Math.PI) : 0.5f;
+        }
+    }
+
+    /// <summary>Animation helpers: path pe chalti light, bijli.</summary>
+    internal static class Fx
+    {
+        public static PointF[] Flat(GraphicsPath p)
+        {
+            using (var c = (GraphicsPath)p.Clone()) { c.Flatten(); return c.PathPoints; }
+        }
+
+        public static float Perimeter(PointF[] pts)
+        {
+            float per = 0;
+            for (int i = 0; i < pts.Length; i++) { var a = pts[i]; var b = pts[(i + 1) % pts.Length]; per += (float)Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y)); }
+            return per;
+        }
+
+        public static PointF At(PointF[] pts, float per, float d)
+        {
+            d %= per; if (d < 0) d += per;
+            for (int i = 0; i < pts.Length; i++)
+            {
+                var a = pts[i]; var b = pts[(i + 1) % pts.Length];
+                float len = (float)Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+                if (d <= len && len > 0) { float t = d / len; return new PointF(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t); }
+                d -= len;
+            }
+            return pts[0];
+        }
+
+        /// <summary>Border pe daudti hui chamakti light (comet).</summary>
+        public static void Comet(Graphics g, PointF[] pts, float per, float head, float length, Color c)
+        {
+            const int N = 16;
+            float step = length / N;
+            for (int k = N - 1; k >= 0; k--)
+            {
+                float t = 1f - (float)k / N;
+                var p1 = At(pts, per, head - k * step); var p0 = At(pts, per, head - (k + 1) * step);
+                using (var pen = new Pen(Color.FromArgb((int)(40 * t * t), c), 7f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLine(pen, p0, p1);
+                using (var pen = new Pen(Color.FromArgb((int)(255 * t * t), Theme.Mix(c, Color.White, t * .6f)), 2.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLine(pen, p0, p1);
+            }
+            var h = At(pts, per, head);
+            using (var b = new SolidBrush(Color.FromArgb(50, c))) g.FillEllipse(b, h.X - 9, h.Y - 9, 18, 18);
+            using (var b = new SolidBrush(Color.FromArgb(120, c))) g.FillEllipse(b, h.X - 5, h.Y - 5, 10, 10);
+            using (var b = new SolidBrush(Color.White)) g.FillEllipse(b, h.X - 2.2f, h.Y - 2.2f, 4.4f, 4.4f);
+        }
+
+        /// <summary>Bijli ki tedhi-medhi lakeer (midpoint displacement).</summary>
+        public static PointF[] Bolt(PointF a, PointF b, float rough, int depth)
+        {
+            var list = new System.Collections.Generic.List<PointF> { a, b };
+            float disp = rough;
+            for (int d = 0; d < depth; d++)
+            {
+                var n = new System.Collections.Generic.List<PointF>();
+                for (int i = 0; i < list.Count - 1; i++)
+                {
+                    var p = list[i]; var q = list[i + 1];
+                    float dx = q.X - p.X, dy = q.Y - p.Y; float len = (float)Math.Sqrt(dx * dx + dy * dy); if (len < 0.01f) len = 0.01f;
+                    float off = ((float)Anim.Rnd.NextDouble() * 2 - 1) * disp;
+                    n.Add(p);
+                    n.Add(new PointF((p.X + q.X) / 2 - dy / len * off, (p.Y + q.Y) / 2 + dx / len * off));
+                }
+                n.Add(list[list.Count - 1]);
+                list = n; disp *= 0.55f;
+            }
+            return list.ToArray();
+        }
+
+        public static void DrawBolt(Graphics g, PointF[] pts, Color glow, float scale)
+        {
+            if (pts == null || pts.Length < 2) return;
+            using (var pen = new Pen(Color.FromArgb(45, glow), 9f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLines(pen, pts);
+            using (var pen = new Pen(Color.FromArgb(120, glow), 4f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLines(pen, pts);
+            using (var pen = new Pen(Color.FromArgb(255, 255, 255, 250), 1.5f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLines(pen, pts);
+        }
+    }
+
     // ======================= ICONS (code se bane, koi image file nahi) =======================
     internal static class Icons
     {
@@ -308,6 +439,42 @@ namespace NabaGameBooster
         public bool Neon;
         public float ChamferSize = 18;
         public Color NeonA = Theme.Purple, NeonB = Theme.Accent;
+        public bool HoverGlow = true;           // sirf flat rows pe
+        private float hov;                       // 0..1 hover chamak
+        private bool lightShown;
+        private readonly float phase = (float)Anim.Rnd.NextDouble() * 10f;
+
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Anim.Frame += OnFrame; }
+        protected override void OnHandleDestroyed(EventArgs e) { Anim.Frame -= OnFrame; base.OnHandleDestroyed(e); }
+
+        private void OnFrame(object s, EventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated || !Visible) return;
+            if (Neon)
+            {
+                if (Anim.Active || lightShown)
+                {
+                    lightShown = Anim.Active;
+                    using (var reg = new Region(ClientRectangle))
+                    {
+                        reg.Exclude(Rectangle.Inflate(ClientRectangle, -17, -17));
+                        Invalidate(reg, false);
+                    }
+                }
+            }
+            else if (HoverGlow)
+            {
+                bool want = false;
+                if (Anim.Active) try { want = RectangleToScreen(ClientRectangle).Contains(Cursor.Position); } catch { }
+                float target = want ? 1f : 0f;
+                if (Math.Abs(hov - target) > 0.001f)
+                {
+                    hov += (target - hov) * 0.35f;
+                    if (Math.Abs(hov - target) < 0.04f) hov = target;
+                    Invalidate(true);
+                }
+            }
+        }
 
         public Card()
         {
@@ -330,16 +497,31 @@ namespace NabaGameBooster
                     Theme.Glow(g, path, Theme.Mix(NeonA, NeonB, .5f), 3, 1.5f, 60);
                     using (var b = new SolidBrush(Fill)) g.FillPath(b, path);
                     Theme.GradientBorder(g, path, r, NeonA, NeonB, 1.6f);
+                    if (Anim.Active)
+                    {
+                        var pts = Fx.Flat(path); float per = Fx.Perimeter(pts);
+                        float head = (Anim.T + phase) * per / 4.2f;
+                        float len = Math.Min(120, per * .12f);
+                        Fx.Comet(g, pts, per, head, len, ControlPaint.Light(NeonB, .2f));
+                        Fx.Comet(g, pts, per, head + per / 2, len, ControlPaint.Light(NeonA, .3f));
+                    }
                 }
             }
             else
             {
                 var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
                 using (var path = Theme.Round(r, Radius))
-                using (var b = new SolidBrush(Fill))
-                using (var pen = new Pen(Border, 1f))
+                using (var b = new SolidBrush(Theme.Mix(Fill, Color.FromArgb(34, 30, 66), hov)))
+                using (var pen = new Pen(Theme.Mix(Border, Theme.Purple, hov), 1f + hov * .6f))
                 {
                     g.FillPath(b, path);
+                    if (hov > 0.01f)
+                    {
+                        using (var inner = Theme.Round(RectangleF.Inflate(r, -2, -2), Math.Max(2, Radius - 2)))
+                        using (var ip = new Pen(Color.FromArgb((int)(70 * hov), Theme.Purple), 3f)) g.DrawPath(ip, inner);
+                        using (var bar = Theme.Round(new RectangleF(r.X + 1.5f, r.Y + 7, 3.5f, r.Height - 14), 1.5f))
+                        using (var bb = new SolidBrush(Color.FromArgb((int)(255 * hov), Theme.Accent))) g.FillPath(bb, bar);
+                    }
                     g.DrawPath(pen, path);
                 }
             }
@@ -351,7 +533,7 @@ namespace NabaGameBooster
     internal class ToggleSwitch : Control
     {
         private bool on;
-        private float knob;
+        private float knob, flash;
         private readonly Timer anim = new Timer { Interval = 15 };
         public event EventHandler Toggled;
         public Color OnColor = Theme.Green;
@@ -366,13 +548,15 @@ namespace NabaGameBooster
             {
                 float target = on ? 1f : 0f;
                 knob += (target - knob) * 0.35f;
-                if (Math.Abs(target - knob) < 0.02f) { knob = target; anim.Stop(); }
+                if (Math.Abs(target - knob) < 0.02f) knob = target;
+                if (flash > 0) flash = Math.Max(0, flash - 0.045f);
+                if (knob == target && flash <= 0) anim.Stop();
                 Invalidate();
             };
         }
 
         [DefaultValue(false)]
-        public bool Checked { get { return on; } set { if (on == value) return; on = value; anim.Start(); } }
+        public bool Checked { get { return on; } set { if (on == value) return; on = value; if (on && Anim.Active) flash = 1f; anim.Start(); } }
 
         protected override void OnClick(EventArgs e) { base.OnClick(e); if (Enabled && Toggled != null) Toggled(this, EventArgs.Empty); }
         protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); Invalidate(); }
@@ -382,10 +566,11 @@ namespace NabaGameBooster
             var g = e.Graphics; Theme.Smooth(g);
             var r = new RectangleF(3, 3, Width - 7, Height - 7);
             Color track = Theme.Mix(Color.FromArgb(52, 56, 80), OnColor, knob);
+            if (flash > 0) track = Theme.Mix(track, Color.FromArgb(200, 255, 210), flash * .55f);
             if (!Enabled) track = Color.FromArgb(40, 42, 60);
             using (var p = Theme.Round(r, r.Height / 2))
             {
-                if (Enabled && knob > 0.3f) Theme.Glow(g, p, OnColor, 2, 1f, (int)(90 * knob));
+                if (Enabled && knob > 0.3f) Theme.Glow(g, p, OnColor, 2, 1f, (int)(90 * knob + 160 * flash));
                 using (var b = new SolidBrush(track)) g.FillPath(b, p);
             }
             float d = r.Height - 6;
@@ -408,7 +593,20 @@ namespace NabaGameBooster
             Font = Theme.Semi(8.5F);
         }
 
-        public void Set(FeatureState s) { state = s; loading = false; Invalidate(); }
+        private float fade = 1f;
+        public void Set(FeatureState s)
+        {
+            if ((s != state || loading) && Anim.Active && s != FeatureState.Off && s != FeatureState.NotAvailable) fade = 0f;
+            state = s; loading = false; Invalidate();
+        }
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Anim.Frame += OnFrame; }
+        protected override void OnHandleDestroyed(EventArgs e) { Anim.Frame -= OnFrame; base.OnHandleDestroyed(e); }
+        private void OnFrame(object s, EventArgs e)
+        {
+            if (fade >= 1f || IsDisposed) return;
+            fade = Anim.Active ? Math.Min(1f, fade + 0.09f) : 1f;
+            Invalidate();
+        }
         public void SetLoading() { loading = true; Invalidate(); }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -430,7 +628,7 @@ namespace NabaGameBooster
             var r = new RectangleF(3, 3, Width - 7, Height - 7);
             using (var p = Theme.Round(r, r.Height / 2))
             {
-                if (glow) Theme.Glow(g, p, c, 2, 1f, 70);
+                if (glow) Theme.Glow(g, p, c, fade < 1 ? 3 : 2, 1f, (int)(70 + 180 * (1 - fade) * (1 - fade)));
                 using (var b = new SolidBrush(Color.FromArgb(30, c))) g.FillPath(b, p);
                 using (var pen = new Pen(Color.FromArgb(220, c), 1.3f)) g.DrawPath(pen, p);
             }
@@ -450,7 +648,78 @@ namespace NabaGameBooster
         public string IconName;
         public bool Outline;          // sirf chamakta border, andar gehra
         public Color OutlineColor = Theme.Accent;
-        private bool hover, down;
+        public bool Pulse;            // glow saans jaisa
+        public bool Lightning;        // asli bijli wala effect
+        private bool hover, down, wasActive;
+        private float rippleStart = -10f; private PointF ripplePt;
+        private float nextStrike, strikeEnd;
+        private readonly System.Collections.Generic.List<PointF[]> bolts = new System.Collections.Generic.List<PointF[]>();
+        private int boltCount;
+
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Anim.Frame += OnFrame; }
+        protected override void OnHandleDestroyed(EventArgs e) { Anim.Frame -= OnFrame; base.OnHandleDestroyed(e); }
+
+        private void OnFrame(object s, EventArgs e)
+        {
+            if (IsDisposed || !Visible) return;
+            bool need = false;
+            float t = Anim.T;
+            if (Anim.Active || wasActive)
+            {
+                if (Pulse && GlowColor != Color.Empty) need = true;
+                if (t - rippleStart < 0.6f || wasActive && !Anim.Active) need = true;
+                if (Lightning) { StepLightning(t); need = true; }
+            }
+            wasActive = Anim.Active;
+            if (need) Invalidate();
+        }
+
+        private void StepLightning(float t)
+        {
+            if (!Anim.Active || !Enabled) { bolts.Clear(); return; }
+            if (t >= nextStrike)
+            {
+                strikeEnd = t + 0.14f + (float)Anim.Rnd.NextDouble() * 0.12f;
+                boltCount = hover ? 2 + Anim.Rnd.Next(2) : 1 + Anim.Rnd.Next(2);
+                nextStrike = t + (hover ? 0.35f + (float)Anim.Rnd.NextDouble() * 0.45f : 1.1f + (float)Anim.Rnd.NextDouble() * 1.4f);
+                MakeBolts();
+            }
+            else if (t < strikeEnd) { if (Anim.Rnd.NextDouble() < 0.6) MakeBolts(); }   // chatak-chatak
+            else bolts.Clear();
+        }
+
+        private RectangleF Inner()
+        {
+            bool glow = GlowColor != Color.Empty && Enabled;
+            float pad = glow ? 8 : (Outline ? 4 : 0.5f);
+            return new RectangleF(pad, pad, Width - 2 * pad - 1, Height - 2 * pad - 1);
+        }
+
+        private void MakeBolts()
+        {
+            bolts.Clear();
+            var r = Inner(); var R = Anim.Rnd;
+            for (int i = 0; i < boltCount; i++)
+            {
+                // button ke beech se guzarti bijli
+                var a = new PointF(r.X + (float)R.NextDouble() * r.Width, r.Y - 2);
+                var b = new PointF(r.X + (float)R.NextDouble() * r.Width, r.Bottom + 2);
+                if (R.Next(2) == 0) { a = new PointF(r.X - 2, r.Y + (float)R.NextDouble() * r.Height); b = new PointF(r.Right + 2, r.Y + (float)R.NextDouble() * r.Height); }
+                var main = Fx.Bolt(a, b, Math.Max(r.Width, r.Height) * .22f, 5);
+                bolts.Add(main);
+                // ek shaakh (branch)
+                var m = main[main.Length / 3 + R.Next(Math.Max(1, main.Length / 3))];
+                bolts.Add(Fx.Bolt(m, new PointF(m.X + (float)(R.NextDouble() * 2 - 1) * r.Width * .3f, m.Y + (float)(R.NextDouble() * 2 - 1) * r.Height * .5f), r.Height * .12f, 4));
+            }
+            // kinaare pe chhoti chingariyan (bahar ki taraf)
+            for (int i = 0; i < 3; i++)
+            {
+                float ex = r.X + (float)R.NextDouble() * r.Width; bool top = R.Next(2) == 0;
+                var a = new PointF(ex, top ? r.Y + 2 : r.Bottom - 2);
+                var b = new PointF(ex + (float)(R.NextDouble() * 2 - 1) * 22, top ? 1 : Height - 1);
+                bolts.Add(Fx.Bolt(a, b, 4, 3));
+            }
+        }
 
         public RoundButton()
         {
@@ -463,7 +732,16 @@ namespace NabaGameBooster
 
         protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { hover = false; down = false; Invalidate(); base.OnMouseLeave(e); }
-        protected override void OnMouseDown(MouseEventArgs e) { down = true; Invalidate(); base.OnMouseDown(e); }
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            down = true;
+            if (Anim.Active && Enabled)
+            {
+                rippleStart = Anim.T; ripplePt = e.Location;
+                if (Lightning) { boltCount = 4; strikeEnd = Anim.T + 0.45f; nextStrike = Anim.T + 0.5f; MakeBolts(); }
+            }
+            Invalidate(); base.OnMouseDown(e);
+        }
         protected override void OnMouseUp(MouseEventArgs e) { down = false; Invalidate(); base.OnMouseUp(e); }
         protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); Invalidate(); }
         protected override void OnTextChanged(EventArgs e) { base.OnTextChanged(e); Invalidate(); }
@@ -481,7 +759,11 @@ namespace NabaGameBooster
 
             using (var p = ChamferShape ? Theme.Chamfer(r, Math.Min(r.Height * .32f, 22)) : Theme.Round(r, Radius))
             {
-                if (glow) Theme.Glow(g, p, GlowColor, 4, 2f, hover ? 120 : 85);
+                bool striking = Lightning && bolts.Count > 0;
+                int ga = hover ? 120 : 85;
+                if (Pulse && Anim.Active) ga = (int)((hover ? 90 : 55) + 110 * Anim.Pulse(1.1f));
+                if (striking) ga = 230;
+                if (glow) Theme.Glow(g, p, striking ? ControlPaint.Light(GlowColor, .5f) : GlowColor, 4, 2f, Math.Min(255, ga));
                 if (Outline)
                 {
                     using (var br = new SolidBrush(hover ? Theme.RowHover : Theme.Row)) g.FillPath(br, p);
@@ -501,6 +783,25 @@ namespace NabaGameBooster
                         }
                         using (var pen = new Pen(Color.FromArgb(200, ControlPaint.Light(GlowColor, .4f)), 1.4f)) g.DrawPath(pen, p);
                     }
+                }
+
+                // click pe light ki lehar
+                float rt = Anim.T - rippleStart;
+                if (rt >= 0 && rt < 0.6f && Anim.Active)
+                {
+                    float k = rt / 0.6f; float rad = Math.Max(Width, Height) * 1.1f * k;
+                    var old = g.Clip; g.SetClip(p);
+                    using (var b2 = new SolidBrush(Color.FromArgb((int)(110 * (1 - k)), 255, 255, 255))) g.FillEllipse(b2, ripplePt.X - rad, ripplePt.Y - rad, rad * 2, rad * 2);
+                    using (var pn = new Pen(Color.FromArgb((int)(220 * (1 - k)), 255, 255, 255), 2.5f)) g.DrawEllipse(pn, ripplePt.X - rad, ripplePt.Y - rad, rad * 2, rad * 2);
+                    g.Clip = old;
+                }
+                // bijli chamakne pe poora button roshan
+                if (striking)
+                {
+                    using (var fl = new SolidBrush(Color.FromArgb(55, 255, 250, 220))) g.FillPath(fl, p);
+                    var old = g.Clip; g.SetClip(p);
+                    foreach (var bt in bolts.GetRange(0, Math.Max(0, bolts.Count - 3))) Fx.DrawBolt(g, bt, Color.FromArgb(140, 205, 255), 0.9f);
+                    g.Clip = old;
                 }
             }
 
@@ -527,6 +828,8 @@ namespace NabaGameBooster
                 using (var sf = Theme.F(9.5F))
                     TextRenderer.DrawText(g, SubText, sf, new Rectangle(rr.X, rr.Y + rr.Height / 2 + 6, rr.Width, 22), Color.FromArgb(235, fg), TextFormatFlags.HorizontalCenter | TextFormatFlags.Top);
             }
+            if (Lightning && bolts.Count >= 3)
+                for (int i = bolts.Count - 3; i < bolts.Count; i++) Fx.DrawBolt(g, bolts[i], Color.FromArgb(150, 210, 255), 0.7f);
         }
     }
 
@@ -569,6 +872,10 @@ namespace NabaGameBooster
             BackColor = Color.Transparent;
             Size = new Size(64, 64);
         }
+        private bool was;
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Anim.Frame += OnFrame; }
+        protected override void OnHandleDestroyed(EventArgs e) { Anim.Frame -= OnFrame; base.OnHandleDestroyed(e); }
+        private void OnFrame(object s, EventArgs e) { if (Anim.Active || was) Invalidate(); was = Anim.Active; }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -579,7 +886,7 @@ namespace NabaGameBooster
             using (var p = new GraphicsPath())
             {
                 p.AddPolygon(pts);
-                Theme.Glow(g, p, Theme.Accent, 4, 2f, 110);
+                Theme.Glow(g, p, Theme.Accent, 4, 2f, Anim.Active ? (int)(70 + 150 * Anim.Pulse(0.9f)) : 110);
                 using (var b = new LinearGradientBrush(new RectangleF(cx - R, cy - R, 2 * R, 2 * R), Color.FromArgb(60, 24, 8), Color.FromArgb(24, 10, 4), 90f)) g.FillPath(b, p);
                 using (var pen = new Pen(Theme.Accent, 2.4f)) g.DrawPath(pen, p);
             }
@@ -621,6 +928,73 @@ namespace NabaGameBooster
                     g.FillPolygon(b1, new[] { new PointF(sx + 9, 14), new PointF(sx + 16, 14), new PointF(sx + 7, 34), new PointF(sx, 34) });
                     g.FillPolygon(b2, new[] { new PointF(sx + 21, 14), new PointF(sx + 28, 14), new PointF(sx + 19, 34), new PointF(sx + 12, 34) });
                 }
+            }
+        }
+    }
+
+    /// <summary>Background me daudti light ki lakeerein (sirf animation ON pe).</summary>
+    internal class Streaks
+    {
+        private readonly Control host;
+        private readonly Rectangle[] last;
+        private bool was;
+        // (vertical?, fixed coord, speed px/s, length, color)
+        private static readonly object[][] defs =
+        {
+            new object[] { false, 3,   240f, 200, Theme.Accent },
+            new object[] { false, 80,  320f, 160, Theme.Purple },
+            new object[] { true,  342, 280f, 180, Theme.Accent },
+            new object[] { true,  3,   200f, 220, Theme.Purple },
+            new object[] { true,  856, 260f, 160, Theme.Accent },
+        };
+
+        public Streaks(Control host)
+        {
+            this.host = host; last = new Rectangle[defs.Length];
+            Anim.Frame += (s, e) => Tick();
+        }
+
+        private RectangleF Rect(int i, float t)
+        {
+            var d = defs[i]; bool v = (bool)d[0]; int fix = (int)d[1]; float sp = (float)d[2]; int len = (int)d[3];
+            float span = (v ? host.ClientSize.Height : host.ClientSize.Width) + len;
+            float pos = (t * sp + i * 137) % span - len;
+            return v ? new RectangleF(fix - 1, pos, 3, len) : new RectangleF(pos, fix - 1, len, 3);
+        }
+
+        private void Tick()
+        {
+            if (host.IsDisposed || !host.IsHandleCreated) return;
+            if (!Anim.Active && !was) return;
+            float t = Anim.T;
+            for (int i = 0; i < defs.Length; i++)
+            {
+                var r = Rectangle.Round(RectangleF.Inflate(Rect(i, t), 6, 6));
+                var u = last[i].IsEmpty ? r : Rectangle.Union(last[i], r);
+                host.Invalidate(u, true);
+                last[i] = Anim.Active ? r : Rectangle.Empty;
+            }
+            was = Anim.Active;
+        }
+
+        public void Paint(Graphics g)
+        {
+            if (!Anim.Active) return;
+            Theme.Smooth(g);
+            float t = Anim.T;
+            for (int i = 0; i < defs.Length; i++)
+            {
+                var d = defs[i]; bool v = (bool)d[0]; var c = (Color)d[4];
+                var r = Rect(i, t);
+                var a = v ? new PointF(r.X + 1.5f, r.Y) : new PointF(r.X, r.Y + 1.5f);
+                var b = v ? new PointF(r.X + 1.5f, r.Bottom) : new PointF(r.Right, r.Y + 1.5f);
+                using (var br = new LinearGradientBrush(a, b, Color.FromArgb(0, c), Color.FromArgb(200, Theme.Mix(c, Color.White, .4f))))
+                {
+                    using (var pen = new Pen(br, 2f)) g.DrawLine(pen, a, b);
+                }
+                using (var br = new LinearGradientBrush(a, b, Color.FromArgb(0, c), Color.FromArgb(50, c)))
+                using (var pen = new Pen(br, 7f)) g.DrawLine(pen, a, b);
+                using (var hb = new SolidBrush(Color.FromArgb(160, Color.White))) g.FillEllipse(hb, b.X - 2, b.Y - 2, 4, 4);
             }
         }
     }
