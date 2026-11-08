@@ -52,5 +52,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 ; Update (silent) ke baad bhi app apne aap khul jaye
 Filename: "{app}\{#MyAppExe}"; Description: "Naba Game Booster kholo"; Flags: nowait postinstall shellexec
 
+[UninstallRun]
+Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""NabaGameBooster"" /f"; Flags: runhidden; RunOnceId: "DelTask"
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\NabaGameBooster"
