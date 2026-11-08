@@ -9,31 +9,45 @@ namespace NabaGameBooster
 {
     internal static class Theme
     {
-        public static readonly Color Bg = Color.FromArgb(13, 15, 20);
-        public static readonly Color Card = Color.FromArgb(22, 25, 33);
-        public static readonly Color CardBorder = Color.FromArgb(36, 40, 52);
-        public static readonly Color Row = Color.FromArgb(28, 32, 42);
-        public static readonly Color RowHover = Color.FromArgb(34, 39, 51);
-        public static readonly Color Text = Color.FromArgb(236, 238, 244);
-        public static readonly Color SubText = Color.FromArgb(140, 146, 162);
-        public static readonly Color Accent = Color.FromArgb(255, 153, 41);
-        public static readonly Color AccentDark = Color.FromArgb(214, 112, 16);
-        public static readonly Color Green = Color.FromArgb(34, 197, 94);
-        public static readonly Color GreenDark = Color.FromArgb(21, 128, 61);
-        public static readonly Color Red = Color.FromArgb(239, 68, 68);
-        public static readonly Color RedDark = Color.FromArgb(153, 27, 27);
-        public static readonly Color Amber = Color.FromArgb(245, 158, 11);
-        public static readonly Color Blue = Color.FromArgb(59, 130, 246);
-        public static readonly Color Grey = Color.FromArgb(75, 82, 99);
+        public static readonly Color Bg = Color.FromArgb(10, 11, 22);
+        public static readonly Color Bg2 = Color.FromArgb(18, 12, 34);
+        public static readonly Color Card = Color.FromArgb(16, 18, 34);
+        public static readonly Color CardBorder = Color.FromArgb(46, 44, 80);
+        public static readonly Color Row = Color.FromArgb(22, 25, 44);
+        public static readonly Color RowBorder = Color.FromArgb(42, 46, 74);
+        public static readonly Color RowHover = Color.FromArgb(30, 34, 58);
+        public static readonly Color Text = Color.FromArgb(240, 242, 250);
+        public static readonly Color SubText = Color.FromArgb(150, 156, 184);
+        public static readonly Color Accent = Color.FromArgb(255, 150, 30);
+        public static readonly Color AccentDark = Color.FromArgb(230, 92, 0);
+        public static readonly Color Purple = Color.FromArgb(150, 80, 255);
+        public static readonly Color PurpleDark = Color.FromArgb(90, 40, 200);
+        public static readonly Color Green = Color.FromArgb(40, 230, 90);
+        public static readonly Color GreenDark = Color.FromArgb(10, 150, 50);
+        public static readonly Color Red = Color.FromArgb(255, 64, 84);
+        public static readonly Color RedDark = Color.FromArgb(170, 20, 50);
+        public static readonly Color Amber = Color.FromArgb(255, 190, 40);
+        public static readonly Color Blue = Color.FromArgb(60, 160, 255);
+        public static readonly Color Grey = Color.FromArgb(78, 84, 110);
 
-        public static Font F(float size, FontStyle style = FontStyle.Regular)
-        {
-            return new Font("Segoe UI", size, style);
-        }
+        public static Font F(float size, FontStyle style = FontStyle.Regular) { return new Font("Segoe UI", size, style); }
 
         public static Font Semi(float size)
         {
             try { return new Font("Segoe UI Semibold", size); } catch { return new Font("Segoe UI", size, FontStyle.Bold); }
+        }
+
+        /// <summary>Gaming heading font: Segoe UI Black Italic (na mile to Bold Italic).</summary>
+        public static Font Heavy(float size)
+        {
+            try
+            {
+                var f = new Font("Segoe UI Black", size, FontStyle.Italic);
+                if (f.Name == "Segoe UI Black") return f;
+                f.Dispose();
+            }
+            catch { }
+            return new Font("Segoe UI", size, FontStyle.Bold | FontStyle.Italic);
         }
 
         public static GraphicsPath Round(RectangleF r, float radius)
@@ -49,50 +63,295 @@ namespace NabaGameBooster
             return p;
         }
 
+        /// <summary>Kate hue kone (gaming style): upar-baayen aur neeche-daayen.</summary>
+        public static GraphicsPath Chamfer(RectangleF r, float c)
+        {
+            var p = new GraphicsPath();
+            float s = c * 0.45f;
+            p.AddPolygon(new[]
+            {
+                new PointF(r.X + c, r.Y), new PointF(r.Right - s, r.Y), new PointF(r.Right, r.Y + s),
+                new PointF(r.Right, r.Bottom - c), new PointF(r.Right - c, r.Bottom), new PointF(r.X + s, r.Bottom),
+                new PointF(r.X, r.Bottom - s), new PointF(r.X, r.Y + c)
+            });
+            return p;
+        }
+
         public static void Smooth(Graphics g)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        }
+
+        /// <summary>Neon chamak: path ke chaaron taraf halki moti lakeerein.</summary>
+        public static void Glow(Graphics g, GraphicsPath p, Color c, int layers = 5, float baseWidth = 1.5f, int alpha = 70)
+        {
+            for (int i = layers; i >= 1; i--)
+            {
+                using (var pen = new Pen(Color.FromArgb(Math.Max(4, alpha / (i + 1)), c), baseWidth + i * 2.6f) { LineJoin = LineJoin.Round })
+                    g.DrawPath(pen, p);
+            }
+        }
+
+        public static void GradientBorder(Graphics g, GraphicsPath p, RectangleF r, Color a, Color b, float width)
+        {
+            using (var br = new LinearGradientBrush(new RectangleF(r.X - 1, r.Y - 1, r.Width + 2, r.Height + 2), a, b, 25f))
+            using (var pen = new Pen(br, width) { LineJoin = LineJoin.Round })
+                g.DrawPath(pen, p);
+        }
+
+        public static Color Mix(Color a, Color b, float t)
+        {
+            return Color.FromArgb((int)(a.A + (b.A - a.A) * t), (int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
         }
     }
 
-    /// <summary>Gol kono wala card.</summary>
+    // ======================= ICONS (code se bane, koi image file nahi) =======================
+    internal static class Icons
+    {
+        public static void Draw(Graphics g, string name, RectangleF r, Color c, float stroke = 1.7f)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            Theme.Smooth(g);
+            float x = r.X, y = r.Y, w = r.Width, h = r.Height;
+            Func<float, float, PointF> P = (px, py) => new PointF(x + px * w, y + py * h);
+            using (var pen = new Pen(c, stroke) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
+            using (var br = new SolidBrush(c))
+            {
+                switch (name)
+                {
+                    case "bolt":
+                        g.FillPolygon(br, new[] { P(.58f, .02f), P(.18f, .56f), P(.46f, .56f), P(.36f, .98f), P(.82f, .40f), P(.53f, .40f), P(.66f, .02f) });
+                        break;
+                    case "play":
+                        g.FillPolygon(br, new[] { P(.18f, .08f), P(.92f, .5f), P(.18f, .92f) });
+                        break;
+                    case "game":
+                        using (var gp = Theme.Round(new RectangleF(x + w * .04f, y + h * .24f, w * .92f, h * .56f), h * .26f)) g.DrawPath(pen, gp);
+                        g.DrawLine(pen, P(.22f, .52f), P(.38f, .52f)); g.DrawLine(pen, P(.30f, .44f), P(.30f, .60f));
+                        g.FillEllipse(br, x + w * .62f, y + h * .40f, w * .09f, h * .09f); g.FillEllipse(br, x + w * .74f, y + h * .52f, w * .09f, h * .09f);
+                        break;
+                    case "layers":
+                        g.DrawPolygon(pen, new[] { P(.5f, .12f), P(.94f, .34f), P(.5f, .56f), P(.06f, .34f) });
+                        g.DrawLines(pen, new[] { P(.06f, .52f), P(.5f, .74f), P(.94f, .52f) });
+                        g.DrawLines(pen, new[] { P(.06f, .70f), P(.5f, .92f), P(.94f, .70f) });
+                        break;
+                    case "rocket":
+                        g.DrawPolygon(pen, new[] { P(.86f, .14f), P(.66f, .58f), P(.42f, .58f), P(.42f, .34f) });
+                        g.DrawLines(pen, new[] { P(.42f, .40f), P(.22f, .42f), P(.12f, .56f), P(.30f, .56f) });
+                        g.DrawLines(pen, new[] { P(.60f, .58f), P(.58f, .78f), P(.44f, .88f), P(.44f, .70f) });
+                        g.DrawLine(pen, P(.30f, .70f), P(.14f, .86f));
+                        g.DrawEllipse(pen, x + w * .58f, y + h * .28f, w * .12f, h * .12f);
+                        break;
+                    case "cubes":
+                        DrawCube(g, pen, P(.5f, .08f), w * .24f, h);
+                        DrawCube(g, pen, P(.27f, .50f), w * .24f, h);
+                        DrawCube(g, pen, P(.73f, .50f), w * .24f, h);
+                        break;
+                    case "shield":
+                        g.DrawPolygon(pen, new[] { P(.5f, .06f), P(.88f, .2f), P(.84f, .58f), P(.5f, .94f), P(.16f, .58f), P(.12f, .2f) });
+                        g.DrawLines(pen, new[] { P(.34f, .5f), P(.46f, .62f), P(.68f, .38f) });
+                        break;
+                    case "chip":
+                        g.DrawRectangle(pen, x + w * .22f, y + h * .22f, w * .56f, h * .56f);
+                        for (int i = 0; i < 3; i++)
+                        {
+                            float t = .34f + i * .16f;
+                            g.DrawLine(pen, P(t, .06f), P(t, .22f)); g.DrawLine(pen, P(t, .78f), P(t, .94f));
+                            g.DrawLine(pen, P(.06f, t), P(.22f, t)); g.DrawLine(pen, P(.78f, t), P(.94f, t));
+                        }
+                        break;
+                    case "broom":
+                        g.DrawLine(pen, P(.86f, .08f), P(.52f, .50f));
+                        g.FillPolygon(br, new[] { P(.44f, .44f), P(.62f, .58f), P(.42f, .94f), P(.10f, .86f), P(.18f, .62f) });
+                        break;
+                    case "monitor":
+                        g.DrawRectangle(pen, x + w * .06f, y + h * .12f, w * .88f, h * .58f);
+                        g.DrawLine(pen, P(.5f, .70f), P(.5f, .86f)); g.DrawLine(pen, P(.28f, .88f), P(.72f, .88f));
+                        break;
+                    case "terminal":
+                        g.DrawRectangle(pen, x + w * .06f, y + h * .14f, w * .88f, h * .72f);
+                        g.DrawLines(pen, new[] { P(.22f, .36f), P(.38f, .50f), P(.22f, .64f) });
+                        g.DrawLine(pen, P(.46f, .66f), P(.70f, .66f));
+                        break;
+                    case "chat":
+                        using (var gp = Theme.Round(new RectangleF(x + w * .08f, y + h * .14f, w * .84f, h * .56f), h * .2f)) g.DrawPath(pen, gp);
+                        g.DrawLines(pen, new[] { P(.30f, .70f), P(.24f, .90f), P(.48f, .70f) });
+                        g.FillEllipse(br, x + w * .30f, y + h * .38f, w * .08f, h * .08f); g.FillEllipse(br, x + w * .46f, y + h * .38f, w * .08f, h * .08f); g.FillEllipse(br, x + w * .62f, y + h * .38f, w * .08f, h * .08f);
+                        break;
+                    case "windows":
+                        g.FillPolygon(br, new[] { P(.08f, .18f), P(.44f, .12f), P(.44f, .47f), P(.08f, .47f) });
+                        g.FillPolygon(br, new[] { P(.50f, .11f), P(.92f, .05f), P(.92f, .47f), P(.50f, .47f) });
+                        g.FillPolygon(br, new[] { P(.08f, .53f), P(.44f, .53f), P(.44f, .88f), P(.08f, .82f) });
+                        g.FillPolygon(br, new[] { P(.50f, .53f), P(.92f, .53f), P(.92f, .95f), P(.50f, .89f) });
+                        break;
+                    case "gear":
+                        for (int i = 0; i < 8; i++)
+                        {
+                            double a = i * Math.PI / 4;
+                            g.DrawLine(new Pen(c, stroke * 2.2f), (float)(x + w * (.5 + .30 * Math.Cos(a))), (float)(y + h * (.5 + .30 * Math.Sin(a))), (float)(x + w * (.5 + .44 * Math.Cos(a))), (float)(y + h * (.5 + .44 * Math.Sin(a))));
+                        }
+                        g.FillEllipse(br, x + w * .2f, y + h * .2f, w * .6f, h * .6f);
+                        using (var hole = new SolidBrush(Theme.Card)) g.FillEllipse(hole, x + w * .37f, y + h * .37f, w * .26f, h * .26f);
+                        break;
+                    case "check":
+                        g.DrawLines(new Pen(c, stroke * 1.4f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round }, new[] { P(.12f, .52f), P(.40f, .78f), P(.90f, .22f) });
+                        break;
+                    case "refresh":
+                        g.DrawArc(pen, x + w * .14f, y + h * .14f, w * .72f, h * .72f, 300, 290);
+                        g.FillPolygon(br, new[] { P(.68f, .02f), P(.92f, .22f), P(.62f, .32f) });
+                        break;
+                    case "ram":
+                        g.DrawRectangle(pen, x + w * .06f, y + h * .28f, w * .88f, h * .40f);
+                        for (int i = 0; i < 4; i++) g.FillRectangle(br, x + w * (.16f + i * .2f), y + h * .38f, w * .1f, h * .2f);
+                        for (int i = 0; i < 5; i++) g.DrawLine(pen, P(.14f + i * .18f, .68f), P(.14f + i * .18f, .80f));
+                        break;
+                    case "timer":
+                        g.DrawEllipse(pen, x + w * .14f, y + h * .18f, w * .72f, h * .72f);
+                        g.DrawLine(pen, P(.5f, .54f), P(.5f, .34f)); g.DrawLine(pen, P(.5f, .54f), P(.64f, .62f));
+                        g.DrawLine(pen, P(.40f, .06f), P(.60f, .06f));
+                        break;
+                    case "mouse":
+                        using (var gp = Theme.Round(new RectangleF(x + w * .24f, y + h * .06f, w * .52f, h * .88f), w * .26f)) g.DrawPath(pen, gp);
+                        g.DrawLine(pen, P(.5f, .16f), P(.5f, .34f));
+                        break;
+                    case "lock":
+                        g.DrawRectangle(pen, x + w * .18f, y + h * .44f, w * .64f, h * .48f);
+                        g.DrawArc(pen, x + w * .30f, y + h * .10f, w * .40f, h * .62f, 180, 180);
+                        break;
+                    case "eye":
+                        g.DrawBezier(pen, P(.04f, .5f), P(.30f, .12f), P(.70f, .12f), P(.96f, .5f));
+                        g.DrawBezier(pen, P(.04f, .5f), P(.30f, .88f), P(.70f, .88f), P(.96f, .5f));
+                        g.FillEllipse(br, x + w * .38f, y + h * .38f, w * .24f, h * .24f);
+                        break;
+                    case "list":
+                        for (int i = 0; i < 3; i++)
+                        {
+                            float yy = .24f + i * .26f;
+                            g.FillEllipse(br, x + w * .06f, y + h * (yy - .05f), w * .10f, h * .10f);
+                            g.DrawLine(pen, P(.28f, yy), P(.94f, yy));
+                        }
+                        break;
+                    case "fps":
+                        g.DrawArc(pen, x + w * .06f, y + h * .16f, w * .88f, h * .88f, 180, 180);
+                        g.DrawLine(pen, P(.5f, .60f), P(.76f, .34f));
+                        g.FillEllipse(br, x + w * .44f, y + h * .54f, w * .12f, h * .12f);
+                        break;
+                }
+            }
+        }
+
+        private static void DrawCube(Graphics g, Pen pen, PointF top, float s, float h)
+        {
+            float k = s * 0.55f;
+            var a = new PointF(top.X, top.Y); var b = new PointF(top.X + s, top.Y + k); var c = new PointF(top.X, top.Y + 2 * k); var d = new PointF(top.X - s, top.Y + k);
+            g.DrawPolygon(pen, new[] { a, b, c, d });
+            g.DrawLines(pen, new[] { d, new PointF(d.X, d.Y + s * .9f), new PointF(c.X, c.Y + s * .9f), new PointF(b.X, b.Y + s * .9f), b });
+            g.DrawLine(pen, c, new PointF(c.X, c.Y + s * .9f));
+        }
+    }
+
+    /// <summary>Chhota icon control.</summary>
+    internal class IconBox : Control
+    {
+        public string IconName;
+        public Color IconColor = Theme.Accent;
+        public float Stroke = 1.7f;
+        public IconBox()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent; Size = new Size(24, 24);
+        }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Icons.Draw(e.Graphics, IconName, new RectangleF(2, 2, Width - 4, Height - 4), Enabled ? IconColor : Theme.Grey, Stroke);
+        }
+    }
+
+    /// <summary>Gaming section heading: icon + MOTA ITALIC naam + orange //.</summary>
+    internal class NeonHeader : Control
+    {
+        public string IconName;
+        public NeonHeader(string text, string icon)
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent; Text = text; IconName = icon;
+            Font = Theme.Heavy(13F); Size = new Size(260, 30);
+        }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics; Theme.Smooth(g);
+            int x = 0;
+            if (!string.IsNullOrEmpty(IconName))
+            {
+                Icons.Draw(g, IconName, new RectangleF(0, 4, 22, 22), Theme.Accent);
+                x = 30;
+            }
+            var sz = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, Text, Font, new Point(x, (Height - sz.Height) / 2), Theme.Text, TextFormatFlags.NoPadding);
+            float sx = x + sz.Width + 8;
+            using (var b1 = new SolidBrush(Theme.Accent)) using (var b2 = new SolidBrush(Color.FromArgb(150, Theme.AccentDark)))
+            {
+                g.FillPolygon(b1, new[] { new PointF(sx + 6, 9), new PointF(sx + 12, 9), new PointF(sx + 6, 22), new PointF(sx, 22) });
+                g.FillPolygon(b2, new[] { new PointF(sx + 16, 9), new PointF(sx + 22, 9), new PointF(sx + 16, 22), new PointF(sx + 10, 22) });
+            }
+        }
+    }
+
+    /// <summary>Card: Flat (rounded) ya Neon (kate kone + purple-orange chamakta border).</summary>
     internal class Card : Panel
     {
-        public int Radius = 14;
+        public int Radius = 12;
         public Color Fill = Theme.Card;
         public Color Border = Theme.CardBorder;
+        public bool Neon;
+        public float ChamferSize = 18;
+        public Color NeonA = Theme.Purple, NeonB = Theme.Accent;
 
         public Card()
         {
             DoubleBuffered = true;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor | ControlStyles.UserPaint, true);
             BackColor = Color.Transparent;
             ForeColor = Theme.Text;
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            if (Parent != null) e.Graphics.Clear(Parent.BackColor == Color.Transparent ? Theme.Bg : Parent.BackColor);
-            Theme.Smooth(e.Graphics);
-            var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
-            using (var path = Theme.Round(r, Radius))
-            using (var b = new SolidBrush(Fill))
-            using (var pen = new Pen(Border, 1f))
+            base.OnPaintBackground(e);   // parent ka background (pattern) dikhe
+            var g = e.Graphics;
+            Theme.Smooth(g);
+            if (Neon)
             {
-                e.Graphics.FillPath(b, path);
-                e.Graphics.DrawPath(pen, path);
+                var r = new RectangleF(7, 7, Width - 15, Height - 15);
+                using (var path = Theme.Chamfer(r, ChamferSize))
+                {
+                    Theme.Glow(g, path, Theme.Mix(NeonA, NeonB, .5f), 3, 1.5f, 60);
+                    using (var b = new SolidBrush(Fill)) g.FillPath(b, path);
+                    Theme.GradientBorder(g, path, r, NeonA, NeonB, 1.6f);
+                }
+            }
+            else
+            {
+                var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+                using (var path = Theme.Round(r, Radius))
+                using (var b = new SolidBrush(Fill))
+                using (var pen = new Pen(Border, 1f))
+                {
+                    g.FillPath(b, path);
+                    g.DrawPath(pen, path);
+                }
             }
         }
     }
 
-    /// <summary>iPhone jaisa ON/OFF switch.</summary>
+    /// <summary>iPhone jaisa ON/OFF switch - ON pe hari chamak.</summary>
     [DefaultEvent("Toggled")]
     internal class ToggleSwitch : Control
     {
         private bool on;
-        private float knob; // 0..1 animation
+        private float knob;
         private readonly Timer anim = new Timer { Interval = 15 };
         public event EventHandler Toggled;
         public Color OnColor = Theme.Green;
@@ -113,42 +372,29 @@ namespace NabaGameBooster
         }
 
         [DefaultValue(false)]
-        public bool Checked
-        {
-            get { return on; }
-            set { if (on == value) return; on = value; anim.Start(); }
-        }
+        public bool Checked { get { return on; } set { if (on == value) return; on = value; anim.Start(); } }
 
-        protected override void OnClick(EventArgs e)
-        {
-            base.OnClick(e);
-            if (Enabled && Toggled != null) Toggled(this, EventArgs.Empty);
-        }
-
+        protected override void OnClick(EventArgs e) { base.OnClick(e); if (Enabled && Toggled != null) Toggled(this, EventArgs.Empty); }
         protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); Invalidate(); }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Theme.Smooth(e.Graphics);
-            var r = new RectangleF(1, 1, Width - 3, Height - 3);
-            Color off = Theme.Grey;
-            Color track = Blend(off, OnColor, knob);
-            if (!Enabled) track = Color.FromArgb(45, 49, 60);
+            var g = e.Graphics; Theme.Smooth(g);
+            var r = new RectangleF(3, 3, Width - 7, Height - 7);
+            Color track = Theme.Mix(Color.FromArgb(52, 56, 80), OnColor, knob);
+            if (!Enabled) track = Color.FromArgb(40, 42, 60);
             using (var p = Theme.Round(r, r.Height / 2))
-            using (var b = new SolidBrush(track)) e.Graphics.FillPath(b, p);
+            {
+                if (Enabled && knob > 0.3f) Theme.Glow(g, p, OnColor, 2, 1f, (int)(90 * knob));
+                using (var b = new SolidBrush(track)) g.FillPath(b, p);
+            }
             float d = r.Height - 6;
             float x = r.X + 3 + (r.Width - d - 6) * knob;
-            using (var b = new SolidBrush(Enabled ? Color.White : Color.FromArgb(110, 115, 128)))
-                e.Graphics.FillEllipse(b, x, r.Y + 3, d, d);
-        }
-
-        private static Color Blend(Color a, Color b, float t)
-        {
-            return Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
+            using (var b = new SolidBrush(Enabled ? Color.White : Color.FromArgb(110, 115, 128))) g.FillEllipse(b, x, r.Y + 3, d, d);
         }
     }
 
-    /// <summary>Chhota rangeen status tag: ON / OFF / ADHURA / RESTART / N/A.</summary>
+    /// <summary>Neon status tag: ON / OFF / ADHURA / RESTART / N/A.</summary>
     internal class Pill : Control
     {
         private FeatureState state = FeatureState.Off;
@@ -158,8 +404,8 @@ namespace NabaGameBooster
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
-            Size = new Size(74, 22);
-            Font = Theme.Semi(8F);
+            Size = new Size(84, 26);
+            Font = Theme.Semi(8.5F);
         }
 
         public void Set(FeatureState s) { state = s; loading = false; Invalidate(); }
@@ -167,9 +413,9 @@ namespace NabaGameBooster
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Theme.Smooth(e.Graphics);
-            string text; Color c;
-            if (loading) { text = "CHECK..."; c = Theme.Grey; }
+            var g = e.Graphics; Theme.Smooth(g);
+            string text; Color c; bool glow = true;
+            if (loading) { text = "CHECK..."; c = Theme.Grey; glow = false; }
             else
             {
                 switch (state)
@@ -177,30 +423,33 @@ namespace NabaGameBooster
                     case FeatureState.On: text = "ON"; c = Theme.Green; break;
                     case FeatureState.Partial: text = "ADHURA"; c = Theme.Amber; break;
                     case FeatureState.Pending: text = "RESTART"; c = Theme.Blue; break;
-                    case FeatureState.NotAvailable: text = "N/A"; c = Theme.Grey; break;
-                    default: text = "OFF"; c = Color.FromArgb(120, 126, 142); break;
+                    case FeatureState.NotAvailable: text = "N/A"; c = Theme.Grey; glow = false; break;
+                    default: text = "OFF"; c = Color.FromArgb(130, 136, 160); glow = false; break;
                 }
             }
-            var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+            var r = new RectangleF(3, 3, Width - 7, Height - 7);
             using (var p = Theme.Round(r, r.Height / 2))
-            using (var b = new SolidBrush(Color.FromArgb(40, c)))
-            using (var pen = new Pen(Color.FromArgb(150, c)))
             {
-                e.Graphics.FillPath(b, p);
-                e.Graphics.DrawPath(pen, p);
+                if (glow) Theme.Glow(g, p, c, 2, 1f, 70);
+                using (var b = new SolidBrush(Color.FromArgb(30, c))) g.FillPath(b, p);
+                using (var pen = new Pen(Color.FromArgb(220, c), 1.3f)) g.DrawPath(pen, p);
             }
-            TextRenderer.DrawText(e.Graphics, text, Font, Rectangle.Round(r), c,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, text, Font, Rectangle.Round(r), c, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
     }
 
-    /// <summary>Gol kono wala button (hover effect ke saath).</summary>
+    /// <summary>Button: rounded ya kate kone, gradient, chamak, icon, outline.</summary>
     internal class RoundButton : Control
     {
         public Color Fill = Theme.Row;
-        public Color Fill2 = Color.Empty; // gradient ka doosra rang (optional)
+        public Color Fill2 = Color.Empty;
         public int Radius = 10;
         public string SubText;
+        public bool ChamferShape;
+        public Color GlowColor = Color.Empty;
+        public string IconName;
+        public bool Outline;          // sirf chamakta border, andar gehra
+        public Color OutlineColor = Theme.Accent;
         private bool hover, down;
 
         public RoundButton()
@@ -221,34 +470,67 @@ namespace NabaGameBooster
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Theme.Smooth(e.Graphics);
-            var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+            var g = e.Graphics; Theme.Smooth(g);
+            bool glow = GlowColor != Color.Empty && Enabled;
+            float pad = glow ? 8 : (Outline ? 4 : 0.5f);
+            var r = new RectangleF(pad, pad, Width - 2 * pad - 1, Height - 2 * pad - 1);
             Color a = Fill, b = Fill2 == Color.Empty ? Fill : Fill2;
-            if (!Enabled) { a = b = Color.FromArgb(40, 44, 55); }
+            if (!Enabled) { a = b = Color.FromArgb(36, 38, 56); }
             else if (down) { a = ControlPaint.Dark(a, 0.05f); b = ControlPaint.Dark(b, 0.05f); }
-            else if (hover) { a = ControlPaint.Light(a, 0.12f); b = ControlPaint.Light(b, 0.12f); }
-            using (var p = Theme.Round(r, Radius))
-            using (var br = new LinearGradientBrush(r, a, b, LinearGradientMode.Horizontal))
-                e.Graphics.FillPath(br, p);
+            else if (hover) { a = ControlPaint.Light(a, 0.15f); b = ControlPaint.Light(b, 0.15f); }
+
+            using (var p = ChamferShape ? Theme.Chamfer(r, Math.Min(r.Height * .32f, 22)) : Theme.Round(r, Radius))
+            {
+                if (glow) Theme.Glow(g, p, GlowColor, 4, 2f, hover ? 120 : 85);
+                if (Outline)
+                {
+                    using (var br = new SolidBrush(hover ? Theme.RowHover : Theme.Row)) g.FillPath(br, p);
+                    if (Enabled) Theme.Glow(g, p, OutlineColor, 2, 1f, 70);
+                    using (var pen = new Pen(Enabled ? OutlineColor : Theme.Grey, 1.5f)) g.DrawPath(pen, p);
+                }
+                else
+                {
+                    using (var br = new LinearGradientBrush(r, a, b, LinearGradientMode.Horizontal)) g.FillPath(br, p);
+                    if (glow)
+                    {
+                        // upar halki chamak
+                        var hl = new RectangleF(r.X, r.Y, r.Width, r.Height * .45f);
+                        using (var hb = new LinearGradientBrush(hl, Color.FromArgb(60, 255, 255, 255), Color.FromArgb(0, 255, 255, 255), 90f))
+                        {
+                            var old = g.Clip; g.SetClip(p); g.FillRectangle(hb, hl); g.Clip = old;
+                        }
+                        using (var pen = new Pen(Color.FromArgb(200, ControlPaint.Light(GlowColor, .4f)), 1.4f)) g.DrawPath(pen, p);
+                    }
+                }
+            }
 
             var fg = Enabled ? ForeColor : Color.FromArgb(110, 115, 128);
+            var rr = Rectangle.Round(r);
             if (string.IsNullOrEmpty(SubText))
             {
-                TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, fg,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+                var sz = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding);
+                float icon = string.IsNullOrEmpty(IconName) ? 0 : Math.Min(rr.Height * .55f, sz.Height * 1.1f);
+                float total = sz.Width + (icon > 0 ? icon + 8 : 0);
+                float x0 = rr.X + (rr.Width - total) / 2;
+                if (icon > 0) Icons.Draw(g, IconName, new RectangleF(x0, rr.Y + (rr.Height - icon) / 2, icon, icon), Outline ? OutlineColor : fg, 1.8f);
+                TextRenderer.DrawText(g, Text, Font, new Point((int)(x0 + (icon > 0 ? icon + 8 : 0)), rr.Y + (rr.Height - sz.Height) / 2), fg, TextFormatFlags.NoPadding);
             }
             else
             {
-                var top = new Rectangle(0, Height / 2 - 26, Width, 30);
-                var bot = new Rectangle(0, Height / 2 + 4, Width, 22);
-                TextRenderer.DrawText(e.Graphics, Text, Font, top, fg, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                using (var sf = Theme.F(9F))
-                    TextRenderer.DrawText(e.Graphics, SubText, sf, bot, Color.FromArgb(220, fg), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                var sz = TextRenderer.MeasureText(g, Text, Font, Size.Empty, TextFormatFlags.NoPadding);
+                float icon = string.IsNullOrEmpty(IconName) ? 0 : sz.Height * .75f;
+                float total = sz.Width + (icon > 0 ? icon + 10 : 0);
+                float x0 = rr.X + (rr.Width - total) / 2;
+                int ty = rr.Y + rr.Height / 2 - sz.Height + 4;
+                if (icon > 0) Icons.Draw(g, IconName, new RectangleF(x0, ty + (sz.Height - icon) / 2, icon, icon), fg, 2f);
+                TextRenderer.DrawText(g, Text, Font, new Point((int)(x0 + (icon > 0 ? icon + 10 : 0)), ty), fg, TextFormatFlags.NoPadding);
+                using (var sf = Theme.F(9.5F))
+                    TextRenderer.DrawText(g, SubText, sf, new Rectangle(rr.X, rr.Y + rr.Height / 2 + 6, rr.Width, 22), Color.FromArgb(235, fg), TextFormatFlags.HorizontalCenter | TextFormatFlags.Top);
             }
         }
     }
 
-    /// <summary>RAM jaisa meter (0-100%).</summary>
+    /// <summary>RAM jaisa meter (0-100%) - chamakta.</summary>
     internal class Meter : Control
     {
         private float value;
@@ -256,48 +538,151 @@ namespace NabaGameBooster
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor | ControlStyles.ResizeRedraw, true);
             BackColor = Color.Transparent;
-            Height = 8;
+            Height = 12;
         }
 
         public float Value { get { return value; } set { this.value = Math.Max(0, Math.Min(100, value)); Invalidate(); } }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Theme.Smooth(e.Graphics);
-            var r = new RectangleF(0, 0, Width - 1, Height - 1);
+            var g = e.Graphics; Theme.Smooth(g);
+            var r = new RectangleF(2, 2, Width - 5, Height - 5);
             using (var p = Theme.Round(r, r.Height / 2))
-            using (var b = new SolidBrush(Color.FromArgb(40, 45, 58))) e.Graphics.FillPath(b, p);
+            using (var b = new SolidBrush(Color.FromArgb(40, 44, 70))) g.FillPath(b, p);
             float w = r.Width * value / 100f;
             if (w < r.Height) return;
             Color c = value >= 85 ? Theme.Red : value >= 70 ? Theme.Amber : Theme.Green;
-            using (var p = Theme.Round(new RectangleF(0, 0, w, r.Height), r.Height / 2))
-            using (var b = new SolidBrush(c)) e.Graphics.FillPath(b, p);
+            using (var p = Theme.Round(new RectangleF(r.X, r.Y, w, r.Height), r.Height / 2))
+            {
+                Theme.Glow(g, p, c, 2, 1f, 80);
+                using (var b = new LinearGradientBrush(new RectangleF(r.X, r.Y, w + 1, r.Height), ControlPaint.Dark(c, .1f), ControlPaint.Light(c, .2f), 0f)) g.FillPath(b, p);
+            }
         }
     }
 
-    /// <summary>App ka logo (orange bijli) - code se bana, koi image file nahi chahiye.</summary>
+    /// <summary>App ka logo: chamakta hexagon + bijli.</summary>
     internal class Logo : Control
     {
         public Logo()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
-            Size = new Size(44, 44);
+            Size = new Size(64, 64);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Theme.Smooth(e.Graphics);
-            var r = new RectangleF(1, 1, Width - 3, Height - 3);
-            using (var p = Theme.Round(r, 11))
-            using (var b = new LinearGradientBrush(r, Theme.Accent, Theme.AccentDark, 45f)) e.Graphics.FillPath(b, p);
-            float s = Width / 44f;
-            var bolt = new[]
+            var g = e.Graphics; Theme.Smooth(g);
+            float cx = Width / 2f, cy = Height / 2f, R = Width / 2f - 8;
+            var pts = new PointF[6];
+            for (int i = 0; i < 6; i++) { double a = Math.PI / 3 * i - Math.PI / 2; pts[i] = new PointF(cx + (float)(R * Math.Cos(a)), cy + (float)(R * Math.Sin(a))); }
+            using (var p = new GraphicsPath())
             {
-                new PointF(25 * s, 7 * s), new PointF(12 * s, 25 * s), new PointF(21 * s, 25 * s),
-                new PointF(18 * s, 38 * s), new PointF(32 * s, 18 * s), new PointF(23 * s, 18 * s), new PointF(28 * s, 7 * s)
-            };
-            using (var b = new SolidBrush(Color.FromArgb(20, 20, 26))) e.Graphics.FillPolygon(b, bolt);
+                p.AddPolygon(pts);
+                Theme.Glow(g, p, Theme.Accent, 4, 2f, 110);
+                using (var b = new LinearGradientBrush(new RectangleF(cx - R, cy - R, 2 * R, 2 * R), Color.FromArgb(60, 24, 8), Color.FromArgb(24, 10, 4), 90f)) g.FillPath(b, p);
+                using (var pen = new Pen(Theme.Accent, 2.4f)) g.DrawPath(pen, p);
+            }
+            Icons.Draw(g, "bolt", new RectangleF(cx - R * .55f, cy - R * .62f, R * 1.1f, R * 1.24f), Theme.Accent);
+        }
+    }
+
+    /// <summary>Header ka bada naam: NABA (safed) GAME BOOSTER (orange gradient) + //.</summary>
+    internal class HeaderTitle : Control
+    {
+        public HeaderTitle()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
+            Size = new Size(460, 46);
+            Font = Theme.Heavy(23F);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics; Theme.Smooth(g);
+            var f = TextFormatFlags.NoPadding;
+            var s1 = TextRenderer.MeasureText(g, "NABA ", Font, Size.Empty, f);
+            var s2 = TextRenderer.MeasureText(g, "GAME BOOSTER", Font, Size.Empty, f);
+            int y = (Height - s1.Height) / 2;
+            TextRenderer.DrawText(g, "NABA ", Font, new Point(0, y), Color.White, f);
+            // orange gradient text
+            using (var path = new GraphicsPath())
+            using (var sf = new StringFormat(StringFormat.GenericTypographic))
+            {
+                float em = g.DpiY * Font.Size / 72f;
+                path.AddString("GAME BOOSTER", Font.FontFamily, (int)Font.Style, em, new PointF(s1.Width - 2, y + 1), sf);
+                var bounds = path.GetBounds();
+                using (var br = new LinearGradientBrush(new RectangleF(bounds.X, bounds.Y - 1, bounds.Width, bounds.Height + 2), Color.FromArgb(255, 205, 60), Theme.AccentDark, 90f))
+                    g.FillPath(br, path);
+                float sx = bounds.Right + 14;
+                using (var b1 = new SolidBrush(Theme.Accent)) using (var b2 = new SolidBrush(Color.FromArgb(140, Theme.AccentDark)))
+                {
+                    g.FillPolygon(b1, new[] { new PointF(sx + 9, 14), new PointF(sx + 16, 14), new PointF(sx + 7, 34), new PointF(sx, 34) });
+                    g.FillPolygon(b2, new[] { new PointF(sx + 21, 14), new PointF(sx + 28, 14), new PointF(sx + 19, 34), new PointF(sx + 12, 34) });
+                }
+            }
+        }
+    }
+
+    /// <summary>Window ka background: gehra gradient + hexagon pattern + neon lakeerein (original art).</summary>
+    internal static class Backdrop
+    {
+        public static Bitmap Render(int w, int h)
+        {
+            var bmp = new Bitmap(Math.Max(1, w), Math.Max(1, h));
+            using (var g = Graphics.FromImage(bmp))
+            {
+                Theme.Smooth(g);
+                using (var b = new LinearGradientBrush(new Rectangle(0, 0, w, h), Theme.Bg2, Theme.Bg, 60f)) g.FillRectangle(b, 0, 0, w, h);
+
+                // hexagon pattern
+                using (var pen = new Pen(Color.FromArgb(14, 150, 120, 255), 1f))
+                {
+                    float R = 22, hw = (float)(Math.Sqrt(3) * R);
+                    for (float yy = -R; yy < h + R; yy += R * 1.5f)
+                    {
+                        int row = (int)Math.Round((yy + R) / (R * 1.5f));
+                        float off = (row % 2) * hw / 2;
+                        for (float xx = -hw + off; xx < w + hw; xx += hw)
+                        {
+                            var pts = new PointF[6];
+                            for (int i = 0; i < 6; i++) { double a = Math.PI / 3 * i - Math.PI / 2; pts[i] = new PointF(xx + (float)(R * Math.Cos(a)), yy + (float)(R * Math.Sin(a))); }
+                            g.DrawPolygon(pen, pts);
+                        }
+                    }
+                }
+
+                // header ke peeche neon chamak + bijli ki lakeerein
+                using (var p = new GraphicsPath())
+                {
+                    p.AddEllipse(w * 0.30f, -h * 0.20f, w * 0.55f, h * 0.30f);
+                    using (var pb = new PathGradientBrush(p) { CenterColor = Color.FromArgb(70, 120, 60, 255), SurroundColors = new[] { Color.FromArgb(0, 120, 60, 255) } })
+                        g.FillPath(pb, p);
+                }
+                using (var p = new GraphicsPath())
+                {
+                    p.AddEllipse(w * 0.55f, -h * 0.15f, w * 0.5f, h * 0.26f);
+                    using (var pb = new PathGradientBrush(p) { CenterColor = Color.FromArgb(50, 255, 120, 20), SurroundColors = new[] { Color.FromArgb(0, 255, 120, 20) } })
+                        g.FillPath(pb, p);
+                }
+                var rnd = new Random(7);
+                for (int i = 0; i < 7; i++)
+                {
+                    float x0 = w * (0.45f + (float)rnd.NextDouble() * 0.5f), y0 = 4 + (float)rnd.NextDouble() * 40;
+                    var col = i % 2 == 0 ? Theme.Purple : Theme.Accent;
+                    using (var pen = new Pen(Color.FromArgb(45 + rnd.Next(40), col), 1.4f + (float)rnd.NextDouble() * 1.6f))
+                        g.DrawLine(pen, x0, y0, x0 + 90 + rnd.Next(120), y0 - 30 - rnd.Next(30));
+                }
+                // neeche ke kone me halki purple chamak
+                using (var p = new GraphicsPath())
+                {
+                    p.AddEllipse(-w * 0.2f, h * 0.75f, w * 0.6f, h * 0.4f);
+                    using (var pb = new PathGradientBrush(p) { CenterColor = Color.FromArgb(40, 120, 60, 255), SurroundColors = new[] { Color.FromArgb(0, 120, 60, 255) } })
+                        g.FillPath(pb, p);
+                }
+            }
+            return bmp;
         }
     }
 }

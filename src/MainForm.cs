@@ -15,6 +15,7 @@ namespace NabaGameBooster
         private class Feature
         {
             public string Title;
+            public string Icon;
             public Func<string, FeatureState> GetState;   // detail out via closure
             public Func<bool> ConfirmOn, ConfirmOff;
             public Action<Action<string>> On, Off;
@@ -57,12 +58,24 @@ namespace NabaGameBooster
             set { Settings.AutoUpdate = value; }
         }
 
+        private Bitmap backdrop;
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            if (backdrop == null || backdrop.Width != ClientSize.Width || backdrop.Height != ClientSize.Height)
+            {
+                if (backdrop != null) backdrop.Dispose();
+                backdrop = Backdrop.Render(ClientSize.Width, ClientSize.Height);
+            }
+            e.Graphics.DrawImageUnscaled(backdrop, 0, 0);
+        }
+
         public MainForm()
         {
             Text = "Naba Game Booster";
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScaleDimensions = new SizeF(96F, 96F);
-            ClientSize = new Size(860, 770);
+            ClientSize = new Size(860, 818);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -125,17 +138,19 @@ namespace NabaGameBooster
         // ================= Header =================
         private void BuildHeader()
         {
-            var logo = new Logo { Location = new Point(24, 16) };
-            var title = new Label { Text = "Naba Game Booster", Font = Theme.Semi(17F), ForeColor = Theme.Text, AutoSize = true, Location = new Point(78, 12), BackColor = Color.Transparent };
-            var sub = new Label { Text = "BlueStacks / MSI App Player  •  Free Fire FPS booster   •   v" + Updater.CurrentText, Font = Theme.F(9F), ForeColor = Theme.SubText, AutoSize = true, Location = new Point(80, 44), BackColor = Color.Transparent };
+            var logo = new Logo { Location = new Point(14, 8), Size = new Size(72, 72) };
+            var title = new HeaderTitle { Location = new Point(90, 10), Size = new Size(470, 46) };
+            var sub = new Label { Text = "BlueStacks / MSI App Player   •   Free Fire FPS booster   •   v" + Updater.CurrentText, Font = Theme.F(9.5F), ForeColor = Theme.SubText, AutoSize = true, Location = new Point(94, 56), BackColor = Color.Transparent };
             Controls.AddRange(new Control[] { logo, title, sub });
 
-            checkBtn = new RoundButton { Text = "Update check", Location = new Point(716, 20), Size = new Size(120, 34), Fill = Theme.Row, Font = Theme.Semi(9F) };
+            checkBtn = new RoundButton { Text = "Update check", IconName = "refresh", Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Location = new Point(680, 16), Size = new Size(166, 46), Font = Theme.Semi(10F) };
             checkBtn.Click += (s, e) => CheckUpdates(true);
             Controls.Add(checkBtn);
 
-            var autoLbl = new Label { Text = "Auto update", ForeColor = Theme.SubText, Font = Theme.F(9F), AutoSize = true, Location = new Point(586, 28), BackColor = Color.Transparent };
-            autoToggle = new ToggleSwitch { Location = new Point(666, 26), Size = new Size(40, 22) };
+            var autoLbl = new Label { Text = "Auto update", ForeColor = Theme.Text, Font = Theme.F(9.5F), AutoSize = true, Location = new Point(566, 29), BackColor = Color.Transparent };
+            autoToggle = new ToggleSwitch { Location = new Point(632, 25), Size = new Size(46, 26) };
+            autoLbl.Location = new Point(560, 29);
+            autoToggle.Location = new Point(632, 26);
             autoToggle.Checked = AutoUpdateEnabled;
             autoToggle.Toggled += (s, e) =>
             {
@@ -145,10 +160,12 @@ namespace NabaGameBooster
             };
             Controls.Add(autoLbl); Controls.Add(autoToggle);
 
-            updateStrip = new Card { Location = new Point(24, 76), Size = new Size(812, 42), Fill = Theme.Card, Radius = 10 };
-            updateText = new Label { Text = "Update check ho raha hai...", ForeColor = Theme.SubText, Font = Theme.F(9.5F), Location = new Point(16, 11), Size = new Size(600, 22), BackColor = Color.Transparent };
-            updateNow = new RoundButton { Text = "Abhi update karo", Location = new Point(652, 5), Size = new Size(152, 32), Fill = Theme.Green, Fill2 = Theme.GreenDark, Visible = false, Font = Theme.Semi(9F) };
+            updateStrip = new Card { Location = new Point(8, 84), Size = new Size(844, 58), Neon = true, ChamferSize = 12, NeonA = Theme.Green, NeonB = Color.FromArgb(40, 200, 160), Fill = Color.FromArgb(14, 26, 26) };
+            var tick = new IconBox { IconName = "check", IconColor = Theme.Green, Location = new Point(30, 18), Size = new Size(24, 24) };
+            updateText = new Label { Text = "Update check ho raha hai...", ForeColor = Theme.SubText, Font = Theme.Semi(10.5F), Location = new Point(62, 19), Size = new Size(580, 24), BackColor = Color.Transparent };
+            updateNow = new RoundButton { Text = "Abhi update karo", Location = new Point(660, 10), Size = new Size(166, 38), Fill = Theme.Green, Fill2 = Theme.GreenDark, Visible = false, Font = Theme.Semi(9.5F), ChamferShape = true };
             updateNow.Click += (s, e) => StartUpdate();
+            updateStrip.Controls.Add(tick);
             updateStrip.Controls.Add(updateText);
             updateStrip.Controls.Add(updateNow);
             Controls.Add(updateStrip);
@@ -157,24 +174,25 @@ namespace NabaGameBooster
         // ================= Game Mode card =================
         private void BuildGameModeCard()
         {
-            var card = new Card { Location = new Point(24, 130), Size = new Size(300, 332) };
-            card.Controls.Add(SectionLabel("GAME MODE", 18, 14));
-            gmButton = new RoundButton { Location = new Point(18, 44), Size = new Size(264, 124), Radius = 16, Font = Theme.Semi(20F) };
+            var card = new Card { Location = new Point(8, 146), Size = new Size(332, 360), Neon = true };
+            card.Controls.Add(SectionLabel("GAME MODE", 24, 20));
+            gmButton = new RoundButton { Location = new Point(18, 54), Size = new Size(296, 132), ChamferShape = true, IconName = "play", Font = Theme.Heavy(26F) };
             gmButton.Click += (s, e) =>
             {
                 if (busy) return;
                 if (GameMode.IsOn) RunJob("Game Mode STOP", GameMode.Off);
                 else RunJob("Game Mode START", GameMode.On);
             };
-            gmStatus = new Label { Location = new Point(18, 176), Size = new Size(264, 22), Font = Theme.Semi(9.5F), BackColor = Color.Transparent };
+            gmStatus = new Label { Location = new Point(26, 190), Size = new Size(286, 22), Font = Theme.Semi(10F), BackColor = Color.Transparent };
             var hint = new Label
             {
                 Text = "Browser, Premiere, Telegram waghera pause - kaam jaisa ka taisa. STOP pe sab wahin se chalu.",
-                Location = new Point(18, 200), Size = new Size(264, 36), ForeColor = Theme.SubText, Font = Theme.F(8.5F), BackColor = Color.Transparent
+                Location = new Point(26, 214), Size = new Size(286, 38), ForeColor = Theme.SubText, Font = Theme.F(9F), BackColor = Color.Transparent
             };
-            var aiRow = new Card { Location = new Point(14, 240), Size = new Size(272, 38), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            aiRow.Controls.Add(new Label { Text = "Claude / ChatGPT bhi pause", Font = Theme.F(9F), ForeColor = Theme.Text, Location = new Point(12, 10), AutoSize = true, BackColor = Color.Transparent });
-            aiToggle = new ToggleSwitch { Location = new Point(218, 8), Size = new Size(44, 22) };
+            var aiRow = new Card { Location = new Point(20, 256), Size = new Size(292, 42), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+            aiRow.Controls.Add(new IconBox { IconName = "chat", Location = new Point(10, 9), Size = new Size(24, 24) });
+            aiRow.Controls.Add(new Label { Text = "Claude / ChatGPT bhi pause", Font = Theme.F(9.5F), ForeColor = Theme.Text, Location = new Point(42, 11), AutoSize = true, BackColor = Color.Transparent });
+            aiToggle = new ToggleSwitch { Location = new Point(236, 8), Size = new Size(48, 26) };
             aiToggle.Checked = Settings.PauseAiApps;
             aiToggle.Toggled += (s, e) =>
             {
@@ -184,9 +202,10 @@ namespace NabaGameBooster
                 Log(Settings.PauseAiApps ? "Claude / ChatGPT desktop bhi Game Mode me pause honge." : "Claude / ChatGPT desktop Game Mode me chalte rahenge.");
             };
             aiRow.Controls.Add(aiToggle);
-            var svRow = new Card { Location = new Point(14, 282), Size = new Size(272, 38), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            svRow.Controls.Add(new Label { Text = "Windows Update / Search rok do", Font = Theme.F(9F), ForeColor = Theme.Text, Location = new Point(12, 10), AutoSize = true, BackColor = Color.Transparent });
-            var svToggle = new ToggleSwitch { Location = new Point(218, 8), Size = new Size(44, 22) };
+            var svRow = new Card { Location = new Point(20, 304), Size = new Size(292, 42), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+            svRow.Controls.Add(new IconBox { IconName = "windows", Location = new Point(10, 9), Size = new Size(24, 24) });
+            svRow.Controls.Add(new Label { Text = "Windows Update / Search band", Font = Theme.F(9.5F), ForeColor = Theme.Text, Location = new Point(42, 11), AutoSize = true, BackColor = Color.Transparent });
+            var svToggle = new ToggleSwitch { Location = new Point(236, 8), Size = new Size(48, 26) };
             svToggle.Checked = Settings.PauseServices;
             svToggle.Toggled += (s, e) =>
             {
@@ -204,20 +223,23 @@ namespace NabaGameBooster
         // ================= System card =================
         private void BuildSystemCard()
         {
-            var card = new Card { Location = new Point(24, 472), Size = new Size(300, 146) };
-            card.Controls.Add(SectionLabel("SYSTEM", 18, 14));
-            ramText = InfoLabel(18, 38);
-            ramMeter = new Meter { Location = new Point(18, 60), Size = new Size(264, 8) };
-            gpuText = InfoLabel(18, 74);
-            gpuText.Text = "GPU:  " + (nvidiaName ?? "NVIDIA card nahi mila");
-            bsText = InfoLabel(18, 92);
-            planText = InfoLabel(18, 110);
-            cleanBtn = new RoundButton { Text = "RAM saaf", Location = new Point(196, 8), Size = new Size(88, 24), Fill = Theme.Row, Font = Theme.Semi(9F) };
+            var card = new Card { Location = new Point(8, 512), Size = new Size(332, 186), Neon = true };
+            card.Controls.Add(SectionLabel("SYSTEM", 24, 18));
+            cleanBtn = new RoundButton { Text = "RAM saaf", IconName = "broom", Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Location = new Point(196, 14), Size = new Size(122, 40), Font = Theme.Semi(9.5F) };
             cleanBtn.Click += (s, e) =>
             {
                 if (busy) return;
                 RunJob("RAM saaf", log => { double got = Booster.CleanNow(); log(string.Format("Cache RAM saaf - {0:N1} GB khali hua.", Math.Max(0, got))); });
             };
+            ramText = InfoLabel(26, 60); ramText.ForeColor = Theme.Text; ramText.Font = Theme.Semi(9.5F);
+            ramMeter = new Meter { Location = new Point(22, 84), Size = new Size(290, 12) };
+            card.Controls.Add(new IconBox { IconName = "chip", Location = new Point(24, 104), Size = new Size(20, 20) });
+            gpuText = InfoLabel(50, 105);
+            gpuText.Text = "GPU:  " + (nvidiaName ?? "NVIDIA card nahi mila");
+            card.Controls.Add(new IconBox { IconName = "layers", Location = new Point(24, 126), Size = new Size(20, 20) });
+            bsText = InfoLabel(50, 127);
+            card.Controls.Add(new IconBox { IconName = "bolt", Location = new Point(24, 148), Size = new Size(20, 20) });
+            planText = InfoLabel(50, 149);
             card.Controls.AddRange(new Control[] { ramText, ramMeter, gpuText, bsText, planText, cleanBtn });
             Controls.Add(card);
         }
@@ -225,40 +247,42 @@ namespace NabaGameBooster
         // ================= Right panel (ek hi scroll panel) =================
         private void BuildRightPanel()
         {
-            var card = new Card { Location = new Point(340, 130), Size = new Size(496, 488) };
+            var card = new Card { Location = new Point(344, 146), Size = new Size(508, 552), Neon = true };
             Controls.Add(card);
-            scroll = new Panel { Location = new Point(6, 8), Size = new Size(486, 472), AutoScroll = true, BackColor = Theme.Card };
+            scroll = new Panel { Location = new Point(18, 18), Size = new Size(474, 518), AutoScroll = true, BackColor = Theme.Card };
             scroll.MouseEnter += (s, e) => scroll.Focus();
             card.Controls.Add(scroll);
 
             int y = 6;
             // ---- ONE-CLICK BOOST ----
-            var boostCard = new Card { Location = new Point(8, y), Size = new Size(452, 92), Fill = Color.FromArgb(40, 30, 16), Border = Theme.AccentDark, Radius = 12 };
-            boostCard.Controls.Add(new Label { Text = "ONE-CLICK BOOST", Font = Theme.Semi(12F), ForeColor = Theme.Accent, Location = new Point(14, 10), AutoSize = true, BackColor = Color.Transparent });
-            boostCard.Controls.Add(new Label { Text = "PC dekh ke saari best settings ek saath", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(15, 36), Size = new Size(260, 18), BackColor = Color.Transparent });
-            profileLbl = new Label { Text = "PC check ho raha hai...", Font = Theme.Semi(8.5F), ForeColor = Theme.Text, Location = new Point(15, 58), Size = new Size(270, 22), BackColor = Color.Transparent, AutoEllipsis = true };
+            var boostCard = new Card { Location = new Point(0, y), Size = new Size(454, 118), Neon = true, ChamferSize = 16, NeonA = Theme.Accent, NeonB = Theme.AccentDark, Fill = Color.FromArgb(40, 22, 12) };
+            boostCard.Controls.Add(new IconBox { IconName = "bolt", IconColor = Theme.Accent, Location = new Point(20, 20), Size = new Size(30, 34) });
+            boostCard.Controls.Add(new Label { Text = "ONE-CLICK BOOST", Font = Theme.Heavy(15F), ForeColor = Theme.Accent, Location = new Point(52, 18), AutoSize = true, BackColor = Color.Transparent });
+            boostCard.Controls.Add(new Label { Text = "PC dekh ke saari best settings ek saath", Font = Theme.F(9F), ForeColor = Color.FromArgb(255, 190, 120), Location = new Point(55, 50), Size = new Size(230, 18), BackColor = Color.Transparent });
+            profileLbl = new Label { Text = "PC check ho raha hai...", Font = Theme.Semi(9F), ForeColor = Theme.Text, Location = new Point(22, 78), Size = new Size(262, 22), BackColor = Color.Transparent, AutoEllipsis = true };
             boostCard.Controls.Add(profileLbl);
-            var boostBtn = new RoundButton { Text = "BOOST", Location = new Point(296, 18), Size = new Size(142, 56), Radius = 12, Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(15F) };
+            var boostBtn = new RoundButton { Text = "BOOST", IconName = "bolt", ChamferShape = true, GlowColor = Theme.Accent, Location = new Point(282, 20), Size = new Size(160, 80), Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(17F) };
             boostBtn.Click += (s, e) => OneClickBoost();
             boostCard.Controls.Add(boostBtn);
             allButtons.Add(boostBtn);
             scroll.Controls.Add(boostCard);
-            y += 106;
+            y += 128;
 
-            scroll.Controls.Add(SectionLabel("OPTIMIZE", 10, y));
-            scroll.Controls.Add(new Label { Text = "Switch dabao - setting lagegi ya hategi", ForeColor = Theme.SubText, Font = Theme.F(8.5F), AutoSize = true, Location = new Point(100, y + 1), BackColor = Color.Transparent });
-            y += 26;
+            scroll.Controls.Add(SectionLabel("OPTIMIZE", 4, y));
+            scroll.Controls.Add(new Label { Text = "Switch dabao - setting lagegi ya hategi", ForeColor = Theme.SubText, Font = Theme.F(9F), AutoSize = true, Location = new Point(212, y + 7), BackColor = Color.Transparent });
+            y += 38;
             optimizeTop = y;
             BuildOptimizations(scroll);
-            y = optimizeTop + features.Count * 47 + 14;
+            y = optimizeTop + features.Count * 52 + 14;
 
             // ---- FPS limit ----
-            scroll.Controls.Add(SectionLabel("FPS LIMIT", 10, y)); y += 26;
-            var guide = new Card { Location = new Point(8, y), Size = new Size(452, 64), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            fpsInfo = new Label { Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 8), Size = new Size(240, 20), BackColor = Color.Transparent };
+            scroll.Controls.Add(SectionLabel("FPS LIMIT", 4, y)); y += 38;
+            var guide = new Card { Location = new Point(2, y), Size = new Size(450, 66), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+            guide.Controls.Add(new IconBox { IconName = "fps", Location = new Point(12, 20), Size = new Size(26, 26) });
+            fpsInfo = new Label { Font = Theme.Semi(9F), ForeColor = Theme.Text, Location = new Point(48, 10), Size = new Size(206, 20), BackColor = Color.Transparent, AutoEllipsis = true };
             guide.Controls.Add(fpsInfo);
-            guide.Controls.Add(new Label { Text = "FPS game me BlueStacks ke counter me dikhega", Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(12, 32), Size = new Size(240, 28), BackColor = Color.Transparent });
-            var change = new RoundButton { Text = "Badlo", Location = new Point(258, 16), Size = new Size(84, 32), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(9F), Radius = 8 };
+            guide.Controls.Add(new Label { Text = "Game me BlueStacks ke FPS counter me dikhega", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(48, 34), Size = new Size(206, 28), BackColor = Color.Transparent });
+            var change = new RoundButton { Text = "Badlo", Location = new Point(258, 14), Size = new Size(86, 38), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Semi(9.5F), ChamferShape = true };
             change.Click += (s, e) =>
             {
                 if (busy) return;
@@ -269,19 +293,19 @@ namespace NabaGameBooster
                 Settings.FpsLimit = fps;
                 RunJob("FPS limit " + fps, Tweaks.BlueStacksOptimize);
             };
-            var gb = new RoundButton { Text = "240 guide", Location = new Point(350, 16), Size = new Size(90, 32), Fill = Theme.Card, Font = Theme.Semi(9F), Radius = 8 };
+            var gb = new RoundButton { Text = "240 guide", Location = new Point(350, 12), Size = new Size(94, 42), Outline = true, OutlineColor = Theme.Purple, ChamferShape = true, Font = Theme.Semi(9F) };
             gb.Click += (s, e) => ShowFpsGuide();
             guide.Controls.Add(change); guide.Controls.Add(gb);
             scroll.Controls.Add(guide);
-            y += 78;
+            y += 80;
 
             // ---- Startup apps ----
-            scroll.Controls.Add(SectionLabel("STARTUP APPS", 10, y));
-            startupSummary = new Label { Location = new Point(124, y + 1), Size = new Size(240, 18), ForeColor = Theme.SubText, Font = Theme.F(8.5F), BackColor = Color.Transparent, Text = "Load ho raha hai..." };
-            var refresh = new RoundButton { Text = "Refresh", Location = new Point(378, y - 3), Size = new Size(82, 24), Fill = Theme.Row, Font = Theme.Semi(8F), Radius = 7 };
+            scroll.Controls.Add(SectionLabel("STARTUP APPS", 4, y));
+            startupSummary = new Label { Location = new Point(250, y + 7), Size = new Size(120, 18), ForeColor = Theme.SubText, Font = Theme.F(9F), BackColor = Color.Transparent, Text = "Load..." };
+            var refresh = new RoundButton { Text = "Refresh", IconName = "refresh", Location = new Point(366, y), Size = new Size(86, 32), Outline = true, OutlineColor = Theme.Purple, ChamferShape = true, Font = Theme.Semi(8.5F) };
             refresh.Click += (s, e) => LoadStartup();
             scroll.Controls.Add(startupSummary); scroll.Controls.Add(refresh);
-            startupTop = y + 28;
+            startupTop = y + 40;
         }
 
         private int optimizeTop = 32;
@@ -345,7 +369,7 @@ namespace NabaGameBooster
             string d;
             AddFeature(host, new Feature
             {
-                Title = "Gaming Optimize",
+                Title = "Gaming Optimize", Icon = "game",
                 GetState = x => { var st = Status.GamingOptimize(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Yeh lagega:\n\n- Ultimate Performance power plan\n- Windows Game Mode ON\n- Xbox background recording OFF\n- GPU scheduling ON (restart ke baad)\n\nLagana hai?"),
                 ConfirmOff = () => Ask("Power plan Balanced pe, Xbox recording aur GPU scheduling Windows default pe wapas.\n\nHatana hai?"),
@@ -353,7 +377,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "BlueStacks / MSI Optimize",
+                Title = "BlueStacks / MSI Optimize", Icon = "layers",
                 GetState = x => { var st = Status.BlueStacks(out d); Pass(d); return st; },
                 ConfirmOn = () =>
                 {
@@ -373,7 +397,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "BlueStacks Fast Mode",
+                Title = "BlueStacks Fast Mode", Icon = "rocket",
                 GetState = x => { var st = Booster.FastModeState(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Windows ka Hyper-V band hoga - BlueStacks / MSI apne tez engine pe chalega.\nFPS zyada aur tika hua rehta hai.\n\nDhyan do:\n- PC RESTART karna padega\n- WSL, Docker, Windows Sandbox nahi chalenge\n- Memory Integrity bhi band rahegi\n- BIOS me Virtualization (VT-x / SVM) ON hona chahiye\n\nLagana hai?"),
                 ConfirmOff = () => Ask("Hyper-V wapas chalu karna hai? (restart ke baad lagega)"),
@@ -381,7 +405,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "BlueStacks / MSI Turbo",
+                Title = "BlueStacks / MSI Turbo", Icon = "bolt",
                 GetState = x => { var st = Booster.TurboState(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("BlueStacks / MSI ke liye:\n\n- Hamesha HIGH CPU priority\n- High performance GPU\n- Fullscreen optimization OFF\n\nEmulator ek baar band karke kholna padega. Lagana hai?"),
                 ConfirmOff = () => Ask("Turbo hata ke Windows default pe wapas?"),
@@ -389,7 +413,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "ASTC - textures GPU pe",
+                Title = "ASTC - textures GPU pe", Icon = "cubes",
                 GetState = x => { var st = Tweaks.AstcState(out d); Pass(d); return st; },
                 ConfirmOn = () =>
                 {
@@ -401,7 +425,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "Defender Exclusion",
+                Title = "Defender Exclusion", Icon = "shield",
                 GetState = x => { var st = Status.Defender(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Windows Defender BlueStacks / MSI ke folders scan nahi karega (game ke beech FPS drop kam).\nBaaki PC waise hi protected rahega.\n\nEmulator me anjaan/modded APK mat daalna. Lagana hai?"),
                 ConfirmOff = () => Ask("Emulator ko dobara Defender scan me daalna hai?"),
@@ -409,7 +433,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "NVIDIA Boost",
+                Title = "NVIDIA Boost", Icon = "chip",
                 GetState = x => { var st = Status.Nvidia(nvidiaName, out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("NVIDIA me 4 setting lagengi:\n\n- Power management = Prefer maximum performance\n- Shader Cache Size = Unlimited\n- Vertical Sync = Force OFF (FPS monitor ki limit pe nahi rukega)\n- Low Latency = ON\n\nVSync off se kabhi screen me halki line (tearing) dikh sakti hai.\nLagana hai?"),
                 ConfirmOff = () =>
@@ -423,14 +447,14 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "RAM Cleaner",
+                Title = "RAM Cleaner", Icon = "ram",
                 GetState = x => { var st = Booster.RamCleanerState(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = Booster.RamCleanerOn, Off = Booster.RamCleanerOff
             });
             AddFeature(host, new Feature
             {
-                Title = "Game Watchdog",
+                Title = "Game Watchdog", Icon = "eye",
                 GetState = x => { d = Settings.Watchdog ? "Game Mode me CPU khaane wale programs ki priority kam" : "Band - switch dabao"; Pass(d); return Settings.Watchdog ? FeatureState.On : FeatureState.Off; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = log => { Settings.Watchdog = true; log("[OK] Game Watchdog ON - Game Mode START pe chalega."); },
@@ -438,7 +462,7 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "Timer 0.5ms (smooth)",
+                Title = "Timer 0.5ms (smooth)", Icon = "timer",
                 GetState = x => { var st = Booster.TimerState(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Game Mode START pe Windows ka timer 0.5ms ho jayega - frames aur input smooth.\nWindows 11 pe poora asar ek baar restart ke baad.\n\nLagana hai?"),
                 ConfirmOff = () => true,
@@ -446,14 +470,14 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
-                Title = "Mouse 1:1  (aim)",
+                Title = "Mouse 1:1  (aim)", Icon = "mouse",
                 GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = Tweaks.MouseRaw, Off = Tweaks.MouseDefault
             });
             AddFeature(host, new Feature
             {
-                Title = "Memory Integrity band (FPS+)",
+                Title = "Memory Integrity band (FPS+)", Icon = "lock",
                 GetState = x => { var st = Status.MemoryIntegrityDisabled(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Memory Integrity band karne se games aur BlueStacks smooth chalte hain,\npar PC ki ek extra security layer hat jaati hai.\n\nRestart ke baad lagega. Karna hai?"),
                 ConfirmOff = () => Ask("Memory Integrity wapas chalu karna hai? (zyada security, gaming thodi dheemi)\nRestart ke baad lagega." + (Booster.HypervisorRunning() ? "" : "\n\nNote: BlueStacks Fast Mode ON hai to Memory Integrity tabhi chalegi jab Fast Mode OFF karoge.")),
@@ -467,11 +491,12 @@ namespace NabaGameBooster
         private void AddFeature(Control parent, Feature f)
         {
             int i = features.Count;
-            var row = new Card { Location = new Point(8, optimizeTop + i * 47), Size = new Size(452, 43), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-            var title = new Label { Text = f.Title, Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 4), AutoSize = true, BackColor = Color.Transparent };
-            f.Detail = new Label { Text = "...", Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(12, 23), Size = new Size(290, 16), BackColor = Color.Transparent, AutoEllipsis = true };
-            f.Pill = new Pill { Location = new Point(310, 11), Size = new Size(72, 21) };
-            f.Toggle = new ToggleSwitch { Location = new Point(396, 10), Size = new Size(44, 23) };
+            var row = new Card { Location = new Point(2, optimizeTop + i * 52), Size = new Size(450, 48), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+            row.Controls.Add(new IconBox { IconName = f.Icon, Location = new Point(12, 11), Size = new Size(26, 26) });
+            var title = new Label { Text = f.Title, Font = Theme.Semi(10.5F), ForeColor = Theme.Text, Location = new Point(48, 4), AutoSize = true, BackColor = Color.Transparent };
+            f.Detail = new Label { Text = "...", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(48, 26), Size = new Size(240, 17), BackColor = Color.Transparent, AutoEllipsis = true };
+            f.Pill = new Pill { Location = new Point(292, 11), Size = new Size(86, 27) };
+            f.Toggle = new ToggleSwitch { Location = new Point(388, 11), Size = new Size(52, 27) };
             f.Toggle.Toggled += (s, e) => OnToggle(f);
             row.Controls.AddRange(new Control[] { title, f.Detail, f.Pill, f.Toggle });
             parent.Controls.Add(row);
@@ -517,10 +542,11 @@ namespace NabaGameBooster
             foreach (var it in items)
             {
                 var item = it;
-                var row = new Card { Location = new Point(8, y), Size = new Size(452, 44), Fill = Theme.Row, Border = Theme.Row, Radius = 9 };
-                var name = new Label { Text = item.Name, Font = Theme.Semi(9.5F), ForeColor = Theme.Text, Location = new Point(12, 4), Size = new Size(300, 18), AutoEllipsis = true, BackColor = Color.Transparent };
-                var cmd = new Label { Text = (item.Protected ? "Windows Security - band nahi kar sakte  •  " : item.Source + "  •  ") + item.Command, Font = Theme.F(7.5F), ForeColor = Theme.SubText, Location = new Point(12, 24), Size = new Size(330, 16), AutoEllipsis = true, BackColor = Color.Transparent };
-                var tg = new ToggleSwitch { Location = new Point(394, 11), Size = new Size(44, 23), Enabled = !item.Protected };
+                var row = new Card { Location = new Point(2, y), Size = new Size(450, 46), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+                row.Controls.Add(new IconBox { IconName = "list", Location = new Point(12, 12), Size = new Size(22, 22) });
+                var name = new Label { Text = item.Name, Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(44, 4), Size = new Size(300, 19), AutoEllipsis = true, BackColor = Color.Transparent };
+                var cmd = new Label { Text = (item.Protected ? "Windows Security - band nahi kar sakte  •  " : item.Source + "  •  ") + item.Command, Font = Theme.F(8F), ForeColor = Theme.SubText, Location = new Point(44, 25), Size = new Size(320, 16), AutoEllipsis = true, BackColor = Color.Transparent };
+                var tg = new ToggleSwitch { Location = new Point(388, 10), Size = new Size(52, 27), Enabled = !item.Protected };
                 tg.Checked = item.Enabled;
                 tg.Toggled += (s, e) =>
                 {
@@ -536,7 +562,7 @@ namespace NabaGameBooster
                 row.Controls.AddRange(new Control[] { name, cmd, tg });
                 scroll.Controls.Add(row);
                 startupRows.Add(row);
-                y += 48;
+                y += 50;
             }
             var spacer = new Label { Location = new Point(0, y + 4), Size = new Size(10, 10), BackColor = Color.Transparent };
             scroll.Controls.Add(spacer); startupRows.Add(spacer);
@@ -553,12 +579,12 @@ namespace NabaGameBooster
         // ================= Log =================
         private void BuildLog()
         {
-            var card = new Card { Location = new Point(24, 630), Size = new Size(812, 128) };
-            card.Controls.Add(SectionLabel("ACTIVITY", 18, 10));
+            var card = new Card { Location = new Point(8, 702), Size = new Size(844, 112), Neon = true, ChamferSize = 14 };
+            card.Controls.Add(SectionLabel("ACTIVITY", 24, 14));
             logBox = new TextBox
             {
                 Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None,
-                Location = new Point(18, 32), Size = new Size(778, 88), BackColor = Theme.Card, ForeColor = Color.FromArgb(170, 220, 180),
+                Location = new Point(26, 48), Size = new Size(796, 52), BackColor = Theme.Card, ForeColor = Color.FromArgb(120, 240, 140),
                 Font = new Font("Consolas", 9F), TabStop = false
             };
             card.Controls.Add(logBox);
@@ -566,14 +592,17 @@ namespace NabaGameBooster
         }
 
         // ================= Helpers =================
-        private static Label SectionLabel(string text, int x, int y)
+        private static Control SectionLabel(string text, int x, int y)
         {
-            return new Label { Text = text, Font = Theme.Semi(9F), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(x, y), BackColor = Color.Transparent };
+            string icon = text.StartsWith("GAME") ? "game" : text.StartsWith("SYSTEM") ? "monitor" : text.StartsWith("OPTIMIZE") ? "gear" :
+                          text.StartsWith("FPS") ? "fps" : text.StartsWith("STARTUP") ? "list" : text.StartsWith("ACTIVITY") ? "terminal" : null;
+            int w = TextRenderer.MeasureText(text, Theme.Heavy(13F)).Width + 78;
+            return new NeonHeader(text, icon) { Location = new Point(x, y), Size = new Size(w, 32) };
         }
 
         private static Label InfoLabel(int x, int y)
         {
-            return new Label { Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(x, y), Size = new Size(264, 18), BackColor = Color.Transparent, AutoEllipsis = true };
+            return new Label { Font = Theme.F(9.5F), ForeColor = Theme.SubText, Location = new Point(x, y), Size = new Size(270, 20), BackColor = Color.Transparent, AutoEllipsis = true };
         }
 
         private bool Ask(string msg) { return MessageBox.Show(this, msg, "Naba Game Booster", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes; }
@@ -618,7 +647,7 @@ namespace NabaGameBooster
             {
                 gmButton.Text = "STOP";
                 gmButton.SubText = "dabao - sab apps wapas chalu";
-                gmButton.Fill = Theme.Red; gmButton.Fill2 = Theme.RedDark;
+                gmButton.Fill = Theme.Red; gmButton.Fill2 = Theme.RedDark; gmButton.GlowColor = Theme.Red; gmButton.IconName = null;
                 int n = GameMode.PausedCount;
                 gmStatus.Text = "ON  •  " + n + " process paused";
                 gmStatus.ForeColor = Theme.Green;
@@ -627,7 +656,7 @@ namespace NabaGameBooster
             {
                 gmButton.Text = "START";
                 gmButton.SubText = "apps pause + RAM khali";
-                gmButton.Fill = Theme.Green; gmButton.Fill2 = Theme.GreenDark;
+                gmButton.Fill = Color.FromArgb(60, 240, 100); gmButton.Fill2 = Color.FromArgb(10, 140, 40); gmButton.GlowColor = Theme.Green; gmButton.IconName = "play";
                 gmStatus.Text = "OFF  •  sab normal chal raha hai";
                 gmStatus.ForeColor = Theme.SubText;
             }
