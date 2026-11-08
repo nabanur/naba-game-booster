@@ -7,7 +7,7 @@ Windows ke liye chhota sa gaming booster. Khaas taur pe **BlueStacks + Free Fire
 2. Chalao. Agar Windows "Windows protected your PC" dikhaye to **More info -> Run anyway**.
 3. Desktop pe **Naba Game Booster** icon aa jayega.
 
-App khulte hi GitHub pe naya version check karta hai, aur naya version ho to **"Update karo"** button dikhata hai.
+App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto update** ON ho to naya version khud download aur install ho jata hai. Header me **Update check** button bhi hai.
 
 ## Features
 | Button | Kya karta hai |

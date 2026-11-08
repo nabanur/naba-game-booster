@@ -89,6 +89,17 @@ namespace NabaGameBooster
             log("Gaming Optimize ho gaya. Ek baar PC restart karna.");
         }
 
+        public static void GamingOptimizeUndo(Action<string> log)
+        {
+            Run("powercfg", "-setactive 381b4222-f694-41f0-9685-ff5bb260df2e");
+            log("[OK] Power plan: Balanced (Windows default)");
+            SetDword(Registry.CurrentUser, @"System\GameConfigStore", "GameDVR_Enabled", 1);
+            log("[OK] Xbox background recording Windows default pe");
+            SetDword(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\GraphicsDrivers", "HwSchMode", 1);
+            log("[OK] GPU scheduling OFF (restart ke baad)");
+            log("Windows Game Mode chalu hi rakha hai (Windows ka default).");
+        }
+
         // ---------------- BlueStacks ----------------
         public const string BlueStacksConf = @"C:\ProgramData\BlueStacks_nxt\bluestacks.conf";
 
@@ -127,6 +138,24 @@ namespace NabaGameBooster
             log("     Purani setting ka backup: " + bak);
         }
 
+        public static string LatestBlueStacksBackup()
+        {
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            try
+            {
+                return Directory.GetFiles(docs, "bluestacks.conf.backup_*").OrderByDescending(File.GetLastWriteTime).FirstOrDefault();
+            }
+            catch { return null; }
+        }
+
+        public static void BlueStacksRestore(Action<string> log)
+        {
+            string bak = LatestBlueStacksBackup();
+            if (bak == null) { log("Purani BlueStacks setting ka backup nahi mila."); return; }
+            File.Copy(bak, BlueStacksConf, true);
+            log("[OK] BlueStacks ki purani setting wapas lagi: " + Path.GetFileName(bak));
+        }
+
         // ---------------- Defender ----------------
         public static void DefenderExclude(Action<string> log)
         {
@@ -139,6 +168,13 @@ namespace NabaGameBooster
                 log("Defender ne mana kiya: " + o.Trim());
             else
                 log("[OK] Defender exclusion laga: " + string.Join(", ", paths) + ", HD-Player.exe");
+        }
+
+        public static void DefenderRemove(Action<string> log)
+        {
+            string cmd = "Remove-MpPreference -ExclusionPath 'C:\\ProgramData\\BlueStacks_nxt','C:\\Program Files\\BlueStacks_nxt'; Remove-MpPreference -ExclusionProcess 'HD-Player.exe'";
+            Run("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"" + cmd + "\"");
+            log("[OK] Defender exclusion hata diya - BlueStacks ab scan hoga");
         }
 
         // ---------------- Mouse ----------------
@@ -211,6 +247,7 @@ namespace NabaGameBooster
             {
                 if (!p.WaitForExit(60000)) { try { p.Kill(); } catch { } log("NVIDIA tool time pe khatam nahi hua."); return; }
             }
+            SetDword(Registry.CurrentUser, @"Software\NabaGameBooster", "NvidiaApplied", 1);
             log("[OK] NVIDIA: Power management = Prefer maximum performance");
             log("[OK] NVIDIA: Shader Cache Size = Unlimited");
         }

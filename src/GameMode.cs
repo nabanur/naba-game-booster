@@ -51,6 +51,15 @@ namespace NabaGameBooster
 
         public static bool IsOn { get { return File.Exists(StateFile); } }
 
+        public static int PausedCount
+        {
+            get
+            {
+                try { return IsOn ? File.ReadAllLines(StateFile).Count(l => l.StartsWith("P|")) : 0; }
+                catch { return 0; }
+            }
+        }
+
         // State file format (har line):
         //   P|pid|startTicks|naam     -> pause hua process
         //   L|launchId               -> band hua app, OFF pe kholna hai

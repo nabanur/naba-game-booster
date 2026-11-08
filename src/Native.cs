@@ -83,20 +83,20 @@ namespace NabaGameBooster
 
         public static double TotalRamGB()
         {
-            var m = new MEMORYSTATUSEX();
-            return GlobalMemoryStatusEx(m) ? m.ullTotalPhys / 1073741824.0 : 0;
+            try { var m = new MEMORYSTATUSEX(); return GlobalMemoryStatusEx(m) ? m.ullTotalPhys / 1073741824.0 : 0; }
+            catch { return 0; }
         }
 
         public static double FreeRamGB()
         {
-            var m = new MEMORYSTATUSEX();
-            return GlobalMemoryStatusEx(m) ? m.ullAvailPhys / 1073741824.0 : 0;
+            try { var m = new MEMORYSTATUSEX(); return GlobalMemoryStatusEx(m) ? m.ullAvailPhys / 1073741824.0 : 0; }
+            catch { return 0; }
         }
 
         public static int RamLoadPercent()
         {
-            var m = new MEMORYSTATUSEX();
-            return GlobalMemoryStatusEx(m) ? (int)m.dwMemoryLoad : 0;
+            try { var m = new MEMORYSTATUSEX(); return GlobalMemoryStatusEx(m) ? (int)m.dwMemoryLoad : 0; }
+            catch { return 0; }
         }
 
         /// <summary>Process ki exe ka poora path (32/64-bit dono ke liye kaam karta hai).</summary>
