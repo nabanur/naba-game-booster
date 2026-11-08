@@ -126,6 +126,7 @@ namespace NabaGameBooster
                 fade.Tick += (s2, e2) => { double o = Opacity + 0.08; if (o >= 1) { Opacity = 1; fade.Stop(); fade.Dispose(); } else Opacity = o; };
                 fade.Start();
                 GameMode.CleanStaleState();
+                Task.Factory.StartNew(() => { try { Tweaks.MouseRestoreOnce(m => BeginInvoke(new Action(() => Log(m)))); } catch { } });
                 Log("Naba Game Booster v" + Updater.CurrentText + " shuru.");
                 if (GameMode.IsOn) Log("Game Mode abhi bhi ON hai - khel ke STOP dabao.");
                 RefreshLive();
@@ -304,39 +305,6 @@ namespace NabaGameBooster
             scroll.Controls.Add(guide);
             y += 80;
 
-            // ---- Pro mouse guide ----
-            scroll.Controls.Add(SectionLabel("PRO MOUSE", 4, y)); y += 38;
-            string ghub = null;
-            try
-            {
-                string gdir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LGHUB");
-                if (System.IO.Directory.Exists(gdir))
-                {
-                    var hits = System.IO.Directory.GetFiles(gdir, "lghub.exe", System.IO.SearchOption.AllDirectories);
-                    if (hits.Length > 0) ghub = hits[0];
-                }
-            }
-            catch { }
-            var mg = new Card { Location = new Point(2, y), Size = new Size(450, 132), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
-            mg.Controls.Add(new IconBox { IconName = "mouse", Location = new Point(12, 14), Size = new Size(26, 26) });
-            mg.Controls.Add(new Label { Text = (ghub != null ? "Logitech G HUB" : "Mouse software (G HUB / Razer / Redragon...)") + " me ye karo:", Font = Theme.Semi(10F), ForeColor = Theme.Text, Location = new Point(48, 10), Size = new Size(390, 20), BackColor = Color.Transparent, AutoEllipsis = true });
-            mg.Controls.Add(new Label
-            {
-                Text = "•  Report rate / Polling:  1000 Hz  (sensi nahi badalti)\n•  DPI wahi rakho jo pehle tha - DPI badla to sensi badlegi\n•  DPI shift / DPI button band (galti se na badle)\n•  Mousepad saaf, sensor pe dhool nahi",
-                Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(48, 34), Size = new Size(ghub != null ? 272 : 392, 90), BackColor = Color.Transparent
-            });
-            if (ghub != null)
-            {
-                var og = new RoundButton { Text = "G HUB kholo", Location = new Point(322, 44), Size = new Size(118, 42), Outline = true, OutlineColor = Theme.Accent, ChamferShape = true, Font = Theme.Semi(9F) };
-                og.Click += (s, e) =>
-                {
-                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + ghub + "\"") { UseShellExecute = false }); Log("G HUB khul raha hai..."); }
-                    catch (Exception ex) { Log("G HUB nahi khula: " + ex.Message); }
-                };
-                mg.Controls.Add(og);
-            }
-            scroll.Controls.Add(mg);
-            y += 146;
 
             // ---- Startup apps ----
             scroll.Controls.Add(SectionLabel("STARTUP APPS", 4, y));
@@ -506,21 +474,6 @@ namespace NabaGameBooster
                 ConfirmOn = () => Ask("Game Mode START pe Windows ka timer 0.5ms ho jayega - frames aur input smooth.\nWindows 11 pe poora asar ek baar restart ke baad.\n\nLagana hai?"),
                 ConfirmOff = () => true,
                 On = Booster.TimerOn, Off = Booster.TimerOff
-            });
-            AddFeature(host, new Feature
-            {
-                Title = "Pro Mouse  (stable, sensi same)", Icon = "mouse",
-                GetState = x => { var st = Status.MouseStable(out d); Pass(d); return st; },
-                ConfirmOn = () => true, ConfirmOff = () => true,
-                On = Tweaks.MouseStableOn, Off = Tweaks.MouseStableOff
-            });
-            AddFeature(host, new Feature
-            {
-                Title = "Mouse Acceleration OFF  (1:1)", Icon = "mouse",
-                GetState = x => { var st = Status.Mouse(out d); Pass(d); return st; },
-                ConfirmOn = () => Ask("Acceleration OFF karne se aim 1:1 hota hai (pro setting), lekin haath ka feel badal jata hai - shuru me sensi alag lagegi.\n\nOFF karoge to bilkul pehle jaisa wapas aa jayega. Lagaun?"),
-                ConfirmOff = () => true,
-                On = Tweaks.MouseRaw, Off = Tweaks.MouseDefault
             });
             AddFeature(host, new Feature
             {

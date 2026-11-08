@@ -367,6 +367,22 @@ namespace NabaGameBooster
             }
         }
 
+        /// <summary>
+        /// Ek baar: purane version ne mouse me jo badla tha (acceleration OFF, speed, USB power saving) wo wapas.
+        /// App ab mouse ko bilkul nahi chhedti.
+        /// </summary>
+        public static void MouseRestoreOnce(Action<string> log)
+        {
+            if (Settings.Get("MouseRestored", false)) return;
+            const string k = @"Control Panel\Mouse";
+            bool accelOff = Status.RegStr(Registry.CurrentUser, k, "MouseSpeed") == "0"
+                         && Status.RegStr(Registry.CurrentUser, k, "MouseThreshold1") == "0"
+                         && Status.RegStr(Registry.CurrentUser, k, "MouseThreshold2") == "0";
+            if (accelOff || Settings.GetStr("MouseBackup") != null) MouseDefault(log);
+            if (Status.UsbSuspendOff() == true) UsbSuspend(true, log);
+            Settings.Set("MouseRestored", true);
+        }
+
         /// <summary>Pro Mouse (stable): sirf USB power saving band. Sensi bilkul nahi chhedta.</summary>
         public static void MouseStableOn(Action<string> log) { UsbSuspend(false, log); log("[OK] Pro Mouse ON - sensi same, signal ab nahi atkega"); }
         public static void MouseStableOff(Action<string> log) { UsbSuspend(true, log); }
