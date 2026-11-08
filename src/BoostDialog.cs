@@ -27,6 +27,7 @@ namespace NabaGameBooster
         private readonly Label header, sub;
         private readonly Panel list;
         private readonly Card result;
+        private readonly BoostRing ring;
         private readonly RoundButton restartBtn, doneBtn;
         private readonly System.Windows.Forms.Timer spin = new System.Windows.Forms.Timer { Interval = 120 };
         private int spinIdx;
@@ -39,35 +40,37 @@ namespace NabaGameBooster
             Text = "One-Click Boost";
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScaleDimensions = new SizeF(96F, 96F);
-            ClientSize = new Size(560, 640);
+            ClientSize = new Size(560, 700);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Theme.Bg; ForeColor = Theme.Text; Font = Theme.F(9.5F);
             DoubleBuffered = true;
 
-            header = new Label { Text = "BOOST ho raha hai...", Font = Theme.Semi(16F), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(22, 16) };
+            header = new Label { Text = "BOOST ho raha hai...", Font = Theme.Semi(16F), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(22, 34) };
             sub = new Label
             {
                 Text = string.Format("{0} PC  •  {1}  •  {2} GB RAM  •  {3} core", pc.TierName, pc.Gpu, pc.RamGb, pc.PhysicalCores),
-                Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(24, 50), Size = new Size(520, 20), AutoEllipsis = true
+                Font = Theme.F(9F), ForeColor = Theme.SubText, Location = new Point(24, 70), Size = new Size(380, 40), AutoEllipsis = true
             };
+            ring = new BoostRing { Location = new Point(418, 8) };
+            Controls.Add(ring);
             Controls.Add(header); Controls.Add(sub);
 
-            list = new Panel { Location = new Point(20, 80), Size = new Size(520, 380), BackColor = Theme.Bg };
+            list = new Panel { Location = new Point(20, 140), Size = new Size(520, 380), BackColor = Theme.Bg };
             Controls.Add(list);
 
-            result = new Card { Location = new Point(20, 470), Size = new Size(520, 110), Visible = false };
+            result = new Card { Location = new Point(20, 530), Size = new Size(520, 110), Visible = false };
             Controls.Add(result);
 
-            restartBtn = new RoundButton { Text = "PC Restart karo", Location = new Point(20, 592), Size = new Size(250, 38), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(10F), Visible = false };
+            restartBtn = new RoundButton { Text = "PC Restart karo", Location = new Point(20, 652), Size = new Size(250, 38), Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(10F), Visible = false };
             restartBtn.Click += (s, e) =>
             {
                 if (MessageBox.Show(this, "Saara kaam save kar liya? PC 10 second me restart hoga.", "Restart", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 try { Process.Start(new ProcessStartInfo("shutdown", "/r /t 10 /c \"Naba Game Booster - boost lagane ke liye restart\"") { UseShellExecute = false, CreateNoWindow = true }); } catch { }
                 Close();
             };
-            doneBtn = new RoundButton { Text = "Baad me", Location = new Point(290, 592), Size = new Size(250, 38), Fill = Theme.Row, Font = Theme.Semi(10F), Visible = false };
+            doneBtn = new RoundButton { Text = "Baad me", Location = new Point(290, 652), Size = new Size(250, 38), Fill = Theme.Row, Font = Theme.Semi(10F), Visible = false };
             doneBtn.Click += (s, e) => Close();
             Controls.Add(restartBtn); Controls.Add(doneBtn);
 
@@ -125,6 +128,8 @@ namespace NabaGameBooster
                 case "fail": st.Icon.Text = "!"; st.Icon.ForeColor = Theme.Amber; st.Text.ForeColor = Theme.Text; break;
             }
             st.Sub.Text = note ?? "";
+            int finished = 0; foreach (var x in steps) if (x.State == "ok" || x.State == "skip" || x.State == "fail") finished++;
+            ring.Target = steps.Count == 0 ? 0 : 100f * finished / steps.Count;
         }
 
         private void RunAll()
@@ -157,6 +162,7 @@ namespace NabaGameBooster
         private void ShowResult()
         {
             spin.Stop();
+            ring.Done();
             Finished = true;
             header.Text = "BOOSTED!";
             header.ForeColor = Theme.Green;

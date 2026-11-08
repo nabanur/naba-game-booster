@@ -68,9 +68,7 @@ namespace NabaGameBooster
                 backdrop = Backdrop.Render(ClientSize.Width, ClientSize.Height);
             }
             e.Graphics.DrawImageUnscaled(backdrop, 0, 0);
-            if (streaks != null) streaks.Paint(e.Graphics);
         }
-        private Streaks streaks;
 
         public MainForm()
         {
@@ -87,7 +85,7 @@ namespace NabaGameBooster
             DoubleBuffered = true;
             Anim.Blocked = () => GameMode.IsOn;
             Anim.Attach(this);
-            streaks = new Streaks(this);
+            Opacity = 0;   // khulte waqt smooth fade-in
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             nvidiaName = Tweaks.NvidiaGpuName();
@@ -124,6 +122,9 @@ namespace NabaGameBooster
 
             Shown += (s, e) =>
             {
+                var fade = new System.Windows.Forms.Timer { Interval = 15 };
+                fade.Tick += (s2, e2) => { double o = Opacity + 0.08; if (o >= 1) { Opacity = 1; fade.Stop(); fade.Dispose(); } else Opacity = o; };
+                fade.Start();
                 GameMode.CleanStaleState();
                 Log("Naba Game Booster v" + Updater.CurrentText + " shuru.");
                 if (GameMode.IsOn) Log("Game Mode abhi bhi ON hai - khel ke STOP dabao.");
@@ -266,7 +267,7 @@ namespace NabaGameBooster
             boostCard.Controls.Add(new Label { Text = "PC dekh ke saari best settings ek saath", Font = Theme.F(9F), ForeColor = Color.FromArgb(255, 190, 120), Location = new Point(55, 50), Size = new Size(230, 18), BackColor = Color.Transparent });
             profileLbl = new Label { Text = "PC check ho raha hai...", Font = Theme.Semi(9F), ForeColor = Theme.Text, Location = new Point(22, 78), Size = new Size(262, 22), BackColor = Color.Transparent, AutoEllipsis = true };
             boostCard.Controls.Add(profileLbl);
-            var boostBtn = new RoundButton { Pulse = true, Lightning = true, Text = "BOOST", IconName = "bolt", ChamferShape = true, GlowColor = Theme.Accent, Location = new Point(282, 20), Size = new Size(160, 80), Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(17F) };
+            var boostBtn = new RoundButton { Shine = true, Text = "BOOST", IconName = "bolt", ChamferShape = true, GlowColor = Theme.Accent, Location = new Point(282, 20), Size = new Size(160, 80), Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(17F) };
             boostBtn.Click += (s, e) => OneClickBoost();
             boostCard.Controls.Add(boostBtn);
             allButtons.Add(boostBtn);
@@ -652,7 +653,7 @@ namespace NabaGameBooster
             {
                 gmButton.Text = "STOP";
                 gmButton.SubText = "dabao - sab apps wapas chalu";
-                gmButton.Fill = Theme.Red; gmButton.Fill2 = Theme.RedDark; gmButton.GlowColor = Theme.Red; gmButton.IconName = null;
+                gmButton.Fill = Theme.Red; gmButton.Fill2 = Theme.RedDark; gmButton.GlowColor = Theme.Red; gmButton.IconName = null; gmButton.Spin = true; gmButton.Pulse = false;
                 int n = GameMode.PausedCount;
                 gmStatus.Text = "ON  •  " + n + " process paused";
                 gmStatus.ForeColor = Theme.Green;
@@ -661,18 +662,37 @@ namespace NabaGameBooster
             {
                 gmButton.Text = "START";
                 gmButton.SubText = "apps pause + RAM khali";
-                gmButton.Fill = Color.FromArgb(60, 240, 100); gmButton.Fill2 = Color.FromArgb(10, 140, 40); gmButton.GlowColor = Theme.Green; gmButton.IconName = "play";
+                gmButton.Fill = Color.FromArgb(60, 240, 100); gmButton.Fill2 = Color.FromArgb(10, 140, 40); gmButton.GlowColor = Theme.Green; gmButton.IconName = "play"; gmButton.Spin = false; gmButton.Pulse = true;
                 gmStatus.Text = "OFF  •  sab normal chal raha hai";
                 gmStatus.ForeColor = Theme.SubText;
             }
             gmButton.Invalidate();
         }
 
+        private double ramShown = -1; private int loadShown;
+        private System.Windows.Forms.Timer ramTw;
+        private void AnimateRam(int load, double free, double total)
+        {
+            Action<double, int> show = (f, l) => ramText.Text = string.Format("RAM:  {0}% use me   •   {1:N1} / {2:N1} GB khali", l, f, total);
+            if (ramShown < 0 || !Anim.Active || Math.Abs(free - ramShown) < 0.15) { ramShown = free; loadShown = load; show(free, load); return; }
+            double f0 = ramShown; int l0 = loadShown; int step = 0; const int N = 30;
+            if (ramTw != null) { ramTw.Stop(); ramTw.Dispose(); }
+            ramTw = new System.Windows.Forms.Timer { Interval = 20 };
+            ramTw.Tick += (s, e) =>
+            {
+                step++; double k = Math.Min(1.0, step / (double)N); k = 1 - (1 - k) * (1 - k);
+                ramShown = f0 + (free - f0) * k; loadShown = (int)Math.Round(l0 + (load - l0) * k);
+                show(ramShown, loadShown);
+                if (step >= N) { ramTw.Stop(); }
+            };
+            ramTw.Start();
+        }
+
         private void RefreshLive()
         {
             double free = Native.FreeRamGB(), total = Native.TotalRamGB();
             int load = Native.RamLoadPercent();
-            ramText.Text = string.Format("RAM:  {0}% use me   •   {1:N1} / {2:N1} GB khali", load, free, total);
+            AnimateRam(load, free, total);
             ramMeter.Value = load;
             bool bs = Emulators.AnyRunning;
             var emus = Emulators.Installed();
