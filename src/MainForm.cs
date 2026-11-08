@@ -113,6 +113,12 @@ namespace NabaGameBooster
                 RefreshStates();
                 LoadStartup();
                 CheckUpdates(false);
+                Task.Factory.StartNew(() => PcProfile.Current).ContinueWith(t =>
+                {
+                    if (IsDisposed || t.Exception != null) return;
+                    var p = t.Result;
+                    BeginInvoke(new Action(() => profileLbl.Text = string.Format("{0} PC  •  {1}  •  {2} GB", p.TierName, p.Gpu, p.RamGb)));
+                });
             };
         }
 
@@ -226,6 +232,19 @@ namespace NabaGameBooster
             card.Controls.Add(scroll);
 
             int y = 6;
+            // ---- ONE-CLICK BOOST ----
+            var boostCard = new Card { Location = new Point(8, y), Size = new Size(452, 92), Fill = Color.FromArgb(40, 30, 16), Border = Theme.AccentDark, Radius = 12 };
+            boostCard.Controls.Add(new Label { Text = "ONE-CLICK BOOST", Font = Theme.Semi(12F), ForeColor = Theme.Accent, Location = new Point(14, 10), AutoSize = true, BackColor = Color.Transparent });
+            boostCard.Controls.Add(new Label { Text = "PC dekh ke saari best settings ek saath", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(15, 36), Size = new Size(260, 18), BackColor = Color.Transparent });
+            profileLbl = new Label { Text = "PC check ho raha hai...", Font = Theme.Semi(8.5F), ForeColor = Theme.Text, Location = new Point(15, 58), Size = new Size(270, 22), BackColor = Color.Transparent, AutoEllipsis = true };
+            boostCard.Controls.Add(profileLbl);
+            var boostBtn = new RoundButton { Text = "BOOST", Location = new Point(296, 18), Size = new Size(142, 56), Radius = 12, Fill = Theme.Accent, Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(20, 20, 26), Font = Theme.Semi(15F) };
+            boostBtn.Click += (s, e) => OneClickBoost();
+            boostCard.Controls.Add(boostBtn);
+            allButtons.Add(boostBtn);
+            scroll.Controls.Add(boostCard);
+            y += 106;
+
             scroll.Controls.Add(SectionLabel("OPTIMIZE", 10, y));
             scroll.Controls.Add(new Label { Text = "Switch dabao - setting lagegi ya hategi", ForeColor = Theme.SubText, Font = Theme.F(8.5F), AutoSize = true, Location = new Point(100, y + 1), BackColor = Color.Transparent });
             y += 26;
@@ -267,6 +286,34 @@ namespace NabaGameBooster
 
         private int optimizeTop = 32;
         private Label fpsInfo;
+        private Label profileLbl;
+        private readonly List<RoundButton> allButtons = new List<RoundButton>();
+
+        private void OneClickBoost()
+        {
+            if (busy) return;
+            if (GameMode.IsOn) { Info("Pehle Game Mode STOP karo, phir Boost karo."); return; }
+            if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI poora band karo (tray me bhi), phir BOOST dabao."); return; }
+            var pc = PcProfile.Current;
+            string msg = string.Format(
+                "Tumhara PC: {0}\n{1}  •  {2}  •  {3} GB RAM\n\nYeh sab ek saath lagega:\n" +
+                "- Windows power plan, Game Mode, Xbox recording off\n" +
+                "- BlueStacks / MSI: RAM {4} GB, CPU {5}, FPS {6}{7}\n" +
+                "- Fast Mode (Hyper-V band) - PC restart chahiye\n" +
+                "- Turbo, ASTC, Defender exclusion{8}\n" +
+                "- RAM Cleaner, Watchdog, Timer\n\n" +
+                "Dhyan do: Fast Mode se WSL / Docker / Windows Sandbox nahi chalenge.\nShuru karein?",
+                pc.TierName, pc.Cpu, pc.Gpu, pc.RamGb, pc.BsRamMb / 1024, pc.BsCpus, pc.Fps,
+                pc.Width > 0 ? ", " + pc.Width + "x" + pc.Height : "",
+                nvidiaName != null ? ", NVIDIA Boost" : "");
+            if (!Ask(msg)) return;
+            SetBusy(true);
+            Log("---- ONE-CLICK BOOST ----");
+            using (var d = new BoostDialog(pc, Log)) d.ShowDialog(this);
+            SetBusy(false);
+            RefreshLive();
+            RefreshStates();
+        }
 
         private void ShowFpsGuide()
         {
@@ -342,6 +389,18 @@ namespace NabaGameBooster
             });
             AddFeature(host, new Feature
             {
+                Title = "ASTC - textures GPU pe",
+                GetState = x => { var st = Tweaks.AstcState(out d); Pass(d); return st; },
+                ConfirmOn = () =>
+                {
+                    if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI band karo, phir switch dabao."); return false; }
+                    return Ask("Free Fire ke textures CPU ki jagah graphics card kholega - 4v4 me CPU halka.\nAgar game me koi texture ajeeb dikhe to switch band kar dena.\n\nLagana hai?");
+                },
+                ConfirmOff = () => { if (Tweaks.BlueStacksRunning) { Info("Pehle BlueStacks / MSI band karo."); return false; } return true; },
+                On = Tweaks.AstcOn, Off = Tweaks.AstcOff
+            });
+            AddFeature(host, new Feature
+            {
                 Title = "Defender Exclusion",
                 GetState = x => { var st = Status.Defender(out d); Pass(d); return st; },
                 ConfirmOn = () => Ask("Windows Defender BlueStacks / MSI ke folders scan nahi karega (game ke beech FPS drop kam).\nBaaki PC waise hi protected rahega.\n\nEmulator me anjaan/modded APK mat daalna. Lagana hai?"),
@@ -368,6 +427,14 @@ namespace NabaGameBooster
                 GetState = x => { var st = Booster.RamCleanerState(out d); Pass(d); return st; },
                 ConfirmOn = () => true, ConfirmOff = () => true,
                 On = Booster.RamCleanerOn, Off = Booster.RamCleanerOff
+            });
+            AddFeature(host, new Feature
+            {
+                Title = "Game Watchdog",
+                GetState = x => { d = Settings.Watchdog ? "Game Mode me CPU khaane wale programs ki priority kam" : "Band - switch dabao"; Pass(d); return Settings.Watchdog ? FeatureState.On : FeatureState.Off; },
+                ConfirmOn = () => true, ConfirmOff = () => true,
+                On = log => { Settings.Watchdog = true; log("[OK] Game Watchdog ON - Game Mode START pe chalega."); },
+                Off = log => { Settings.Watchdog = false; log("[OK] Game Watchdog band."); }
             });
             AddFeature(host, new Feature
             {
@@ -525,6 +592,7 @@ namespace NabaGameBooster
             busy = b;
             gmButton.Enabled = !b;
             if (cleanBtn != null) cleanBtn.Enabled = !b;
+            foreach (var x in allButtons) x.Enabled = !b;
             foreach (var f in features) f.Toggle.Enabled = !b && f.State != FeatureState.NotAvailable;
             Cursor = b ? Cursors.WaitCursor : Cursors.Default;
             RefreshGameButton();

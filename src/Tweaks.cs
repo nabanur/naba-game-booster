@@ -107,10 +107,11 @@ namespace NabaGameBooster
 
         public static void BlueStacksPlan(out int ramMb, out int cpus, out int pcRamGb, out int threads)
         {
-            pcRamGb = (int)Math.Round(Native.TotalRamGB());
-            threads = Environment.ProcessorCount;
-            ramMb = pcRamGb >= 15 ? 6144 : pcRamGb >= 11 ? 4096 : 3072;
-            cpus = threads >= 8 ? 4 : 2;
+            var p = PcProfile.Current;
+            pcRamGb = p.RamGb;
+            threads = p.Threads;
+            ramMb = p.BsRamMb;
+            cpus = p.BsCpus;
         }
 
         /// <summary>Monitor ka refresh rate (Hz). Na mile to 60.</summary>
@@ -151,7 +152,19 @@ namespace NabaGameBooster
         /// <summary>Ek emulator ki conf me RAM/CPU/240 FPS/high fps/VSync off lagata hai.</summary>
         public static string ApplyEmuConf(string text, int ram, int cpus)
         {
+            var p = PcProfile.Current;
+            return ApplyEmuConf(text, ram, cpus, TargetFps, p.Width, p.Height, p.Dpi);
+        }
+
+        public static string ApplyEmuConf(string text, int ram, int cpus, int fps, int width, int height, int dpi)
+        {
             string t = text;
+            if (width > 0 && height > 0)
+            {
+                t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.fb_width=)""\d+""", "${1}\"" + width + "\"");
+                t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.fb_height=)""\d+""", "${1}\"" + height + "\"");
+                if (dpi > 0) t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.dpi=)""\d+""", "${1}\"" + dpi + "\"");
+            }
             // FPS counter hamesha dikhe - jin instance me line nahi hai unme jodo
             var instances = new HashSet<string>();
             foreach (Match m in Regex.Matches(t, @"bst\.instance\.([^.\r\n]+)\.ram="""))
@@ -166,7 +179,7 @@ namespace NabaGameBooster
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_fps_display=)""\d""", "${1}\"1\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.ram=)""\d+""", "${1}\"" + ram + "\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.cpus=)""\d+""", "${1}\"" + cpus + "\"");
-            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.max_fps=)""\d+""", "${1}\"" + TargetFps + "\"");
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.max_fps=)""\d+""", "${1}\"" + fps + "\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_high_fps=)""\d""", "${1}\"1\"");
             t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_vsync=)""\d""", "${1}\"0\"");
             return t;
@@ -191,6 +204,57 @@ namespace NabaGameBooster
                 catch (Exception ex) { log(e.Name + " me setting nahi lagi: " + ex.Message); }
             }
             log("Backup folder: Documents\\NabaGameBooster Backup");
+        }
+
+        // ---------------- ASTC (texture GPU se decode) ----------------
+        public static FeatureState AstcState(out string detail)
+        {
+            var emus = Emulators.Installed();
+            if (emus.Count == 0) { detail = "BlueStacks / MSI install nahi hai"; return FeatureState.NotAvailable; }
+            int on = 0;
+            foreach (var e in emus)
+            {
+                try
+                {
+                    var m = Regex.Match(File.ReadAllText(e.Conf), @"bst\.instance\.[^.\r\n]+\.astc_decoding_mode=""([a-z]+)""");
+                    if (m.Success && m.Groups[1].Value == "hardware") on++;
+                }
+                catch { }
+            }
+            detail = on == emus.Count ? "Textures graphics card khol raha hai - CPU halka" : "Textures abhi CPU khol raha hai";
+            return on == emus.Count ? FeatureState.On : on == 0 ? FeatureState.Off : FeatureState.Partial;
+        }
+
+        private static void SetAstc(string mode, Action<string> log)
+        {
+            foreach (var e in Emulators.Installed())
+            {
+                try
+                {
+                    string t = File.ReadAllText(e.Conf);
+                    string n = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.astc_decoding_mode=)""[a-z]+""", "${1}\"" + mode + "\"");
+                    if (n == t && !t.Contains("astc_decoding_mode"))
+                    {
+                        string nl = t.Contains("\r\n") ? "\r\n" : "\n";
+                        foreach (Match m in Regex.Matches(t, @"bst\.instance\.([^.\r\n]+)\.ram="""))
+                            n = n.TrimEnd('\r', '\n') + nl + "bst.instance." + m.Groups[1].Value + ".astc_decoding_mode=\"" + mode + "\"" + nl;
+                    }
+                    File.WriteAllText(e.Conf, n, new UTF8Encoding(false));
+                    log("[OK] " + e.Name + ": ASTC decoding = " + mode);
+                }
+                catch (Exception ex) { log(e.Name + ": " + ex.Message); }
+            }
+        }
+
+        public static void AstcOn(Action<string> log) { SetAstc("hardware", log); log("Emulator band karke kholna - tab lagega."); }
+        public static void AstcOff(Action<string> log) { SetAstc("disabled", log); }
+
+        /// <summary>One-Click Boost ke liye: profile ke hisaab se sab emulator tune.</summary>
+        public static void BlueStacksApplyProfile(PcProfile p, Action<string> log)
+        {
+            Settings.FpsLimit = p.Fps;
+            BlueStacksOptimize(log);
+            if (p.Width > 0) log(string.Format("     Resolution {0}x{1} (is PC ke liye halka)", p.Width, p.Height));
         }
 
         public static string LatestBackup(Emu e)

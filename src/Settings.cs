@@ -52,6 +52,7 @@ namespace NabaGameBooster
         public static bool PauseServices { get { return Get("PauseServices", true); } set { Set("PauseServices", value); } }
         /// <summary>BlueStacks/MSI FPS limit (0 = abhi chuna nahi).</summary>
         public static int FpsLimit { get { return GetInt("FpsLimit", 0); } set { SetInt("FpsLimit", value); } }
+        public static bool Watchdog { get { return Get("Watchdog", true); } set { Set("Watchdog", value); } }
         public static bool TimerRes { get { return Get("TimerRes", false); } set { Set("TimerRes", value); } }
     }
 }

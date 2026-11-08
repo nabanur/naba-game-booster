@@ -163,6 +163,8 @@ namespace NabaGameBooster
 
             SetBlueStacksPriority(ProcessPriorityClass.High);
 
+            if (Settings.Watchdog) NabaGameBooster.Watchdog.Start(log);
+
             if (Settings.TimerRes)
             {
                 double ms = Native.SetTimerResolution(true);
@@ -183,6 +185,7 @@ namespace NabaGameBooster
             // BlueStacks Turbo ON ho to High hi rehne do
             SetBlueStacksPriority(Booster.TurboPriorityOn ? ProcessPriorityClass.High : ProcessPriorityClass.Normal);
             Native.SetTimerResolution(false);
+            NabaGameBooster.Watchdog.Stop(log);
             if (!IsOn) { log("Game Mode ON nahi tha."); return; }
 
             var lines = File.ReadAllLines(StateFile);

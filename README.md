@@ -12,6 +12,7 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 ## Features
 | Button | Kya karta hai |
 |---|---|
+| **ONE-CLICK BOOST** | PC pehchan ke (Low/Mid/High) saari settings ek saath + PC Score |
 | Game Mode ON | Browser, Premiere, Animate, Telegram, Codex waghera PAUSE (kaam jaisa ka taisa), RAM khali; Google Drive/OneDrive/Epic band; BlueStacks HIGH priority |
 | Game Mode OFF | Paused apps wahin se chalu, band hue apps wapas |
 | Gaming Optimize | Ultimate Performance power plan, Windows Game Mode ON, Xbox recording OFF, GPU scheduling ON |
@@ -22,6 +23,8 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | Memory Integrity OFF / ON | FPS ke liye off, security ke liye on (restart chahiye) |
 | BlueStacks Turbo | Hamesha HIGH priority, high performance GPU, fullscreen optimization off |
 | RAM Cleaner | Game Mode me cache (standby) RAM har 5 min saaf |
+| Game Watchdog | Game Mode me CPU khaane wale background programs ki priority kam |
+| ASTC | Free Fire textures graphics card pe decode (CPU halka) |
 | Timer 0.5ms | Game Mode me Windows timer 0.5ms - smooth frames |
 | Startup Apps | PC chalu hote hi khulne wale apps band/chalu |
 | BlueStacks Fast Mode | Windows Hyper-V band - emulator apne tez engine pe (restart chahiye) |
