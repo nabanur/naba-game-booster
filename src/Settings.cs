@@ -49,6 +49,7 @@ namespace NabaGameBooster
         public static bool AutoUpdate { get { return Get("AutoUpdate", true); } set { Set("AutoUpdate", value); } }
         public static bool PauseAiApps { get { return Get("PauseAiApps", true); } set { Set("PauseAiApps", value); } }
         public static bool RamCleaner { get { return Get("RamCleaner", false); } set { Set("RamCleaner", value); } }
+        public static bool PauseServices { get { return Get("PauseServices", true); } set { Set("PauseServices", value); } }
         public static bool TimerRes { get { return Get("TimerRes", false); } set { Set("TimerRes", value); } }
     }
 }

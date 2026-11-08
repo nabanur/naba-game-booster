@@ -45,6 +45,9 @@ namespace NabaGameBooster
             "EpicWebHelper"
         };
 
+        // Game ke time rukne wali Windows services (STOP pe wapas chalu)
+        private static readonly string[] BgServices = { "wuauserv", "UsoSvc", "BITS", "DoSvc", "WSearch", "SysMain", "DiagTrack" };
+
         private static string StateFile
         {
             get
@@ -108,7 +111,36 @@ namespace NabaGameBooster
             }
 
             // State pehle likho, phir band karo - taaki kuch bhi ho, OFF hamesha chal sake
+            var stopServices = new List<string>();
+            if (Settings.PauseServices)
+            {
+                foreach (var name in BgServices)
+                {
+                    try
+                    {
+                        using (var sc = new System.ServiceProcess.ServiceController(name))
+                            if (sc.Status == System.ServiceProcess.ServiceControllerStatus.Running && sc.CanStop) { stopServices.Add(name); lines.Add("S|" + name); }
+                    }
+                    catch { }
+                }
+            }
             File.WriteAllLines(StateFile, lines);
+
+            var stopped = new List<string>();
+            foreach (var name in stopServices)
+            {
+                try
+                {
+                    using (var sc = new System.ServiceProcess.ServiceController(name))
+                    {
+                        sc.Stop();
+                        sc.WaitForStatus(System.ServiceProcess.ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(8));
+                        stopped.Add(ServiceLabel(name));
+                    }
+                }
+                catch { }
+            }
+            if (stopped.Count > 0) log("RUKI Windows services: " + string.Join(", ", stopped));
 
             foreach (var p in toClose)
             {
@@ -168,6 +200,22 @@ namespace NabaGameBooster
             }
             if (resumed > 0) log("CHALU hue (wahin se jahan ruke the): " + string.Join(", ", resumedNames.OrderBy(x => x)));
 
+            // 1b) Windows services wapas chalu
+            var started = new List<string>();
+            foreach (var l in lines.Where(x => x.StartsWith("S|")))
+            {
+                string name = l.Substring(2);
+                try
+                {
+                    using (var sc = new System.ServiceProcess.ServiceController(name))
+                    {
+                        if (sc.Status == System.ServiceProcess.ServiceControllerStatus.Stopped) { sc.Start(); started.Add(ServiceLabel(name)); }
+                    }
+                }
+                catch { }
+            }
+            if (started.Count > 0) log("Windows services wapas chalu: " + string.Join(", ", started));
+
             // 2) Band hue apps wapas kholo (normal user mode me, explorer ke through)
             var running = new HashSet<string>(Process.GetProcesses().Select(p => p.ProcessName), StringComparer.OrdinalIgnoreCase);
             foreach (var l in lines.Where(x => x.StartsWith("L|")))
@@ -196,20 +244,31 @@ namespace NabaGameBooster
             Off(log);
         }
 
-        /// <summary>Restart ke baad purani state bekaar hai - paused process bache hi nahi to file hata do.</summary>
+        /// <summary>Restart ke baad purani state bekaar hai (services khud chalu, paused apps khatam) - file hata do.</summary>
         public static void CleanStaleState()
         {
             if (!IsOn) return;
             try
             {
-                bool anyAlive = File.ReadAllLines(StateFile).Where(x => x.StartsWith("P|")).Any(l =>
-                {
-                    var f = l.Split('|'); int pid; long ticks;
-                    return f.Length >= 4 && int.TryParse(f[1], out pid) && long.TryParse(f[2], out ticks) && SameProcess(pid, ticks);
-                });
-                if (!anyAlive) File.Delete(StateFile);
+                var boot = DateTime.Now - TimeSpan.FromMilliseconds((uint)Environment.TickCount);
+                if (File.GetLastWriteTime(StateFile) < boot) File.Delete(StateFile);
             }
             catch { }
+        }
+
+        private static string ServiceLabel(string n)
+        {
+            switch (n.ToLowerInvariant())
+            {
+                case "wuauserv": return "Windows Update";
+                case "usosvc": return "Update Orchestrator";
+                case "bits": return "BITS";
+                case "dosvc": return "Delivery Optimization";
+                case "wsearch": return "Windows Search";
+                case "sysmain": return "SysMain";
+                case "diagtrack": return "Telemetry";
+                default: return n;
+            }
         }
 
         private static bool SameProcess(int pid, long startTicksUtc)

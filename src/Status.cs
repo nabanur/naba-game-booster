@@ -98,38 +98,49 @@ namespace NabaGameBooster
 
         public static FeatureState BlueStacks(out string detail)
         {
-            detail = "";
-            if (!File.Exists(Tweaks.BlueStacksConf)) { detail = "BlueStacks 5 install nahi hai"; return FeatureState.NotAvailable; }
+            var emus = Emulators.Installed();
+            if (emus.Count == 0) { detail = "BlueStacks 5 / MSI App Player install nahi hai"; return FeatureState.NotAvailable; }
             int ram, cpus, pcRam, threads;
             Tweaks.BlueStacksPlan(out ram, out cpus, out pcRam, out threads);
-            string t;
-            try { t = File.ReadAllText(Tweaks.BlueStacksConf); } catch { detail = "Setting padh nahi paya"; return FeatureState.Off; }
-            var r = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.ram=""(\d+)""");
-            var f = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.max_fps=""(\d+)""");
-            var v = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.enable_vsync=""(\d)""");
-            string curRam = r.Success ? r.Groups[1].Value : "?";
-            string curFps = f.Success ? f.Groups[1].Value : "?";
-            detail = string.Format("Abhi: RAM {0} MB, FPS {1}", curRam, curFps);
-            bool ok = curRam == ram.ToString() && curFps == "120" && (!v.Success || v.Groups[1].Value == "0");
-            return ok ? FeatureState.On : FeatureState.Off;
+            int ok = 0;
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var e in emus)
+            {
+                string t;
+                try { t = File.ReadAllText(e.Conf); } catch { parts.Add(e.Short + ": ?"); continue; }
+                var r = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.ram=""(\d+)""");
+                var f = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.max_fps=""(\d+)""");
+                var h = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.enable_high_fps=""(\d)""");
+                var v = Regex.Match(t, @"bst\.instance\.[^.\r\n]+\.enable_vsync=""(\d)""");
+                string fps = f.Success ? f.Groups[1].Value : "?";
+                bool good = r.Success && r.Groups[1].Value == ram.ToString() && fps == Tweaks.TargetFps.ToString()
+                            && (!h.Success || h.Groups[1].Value == "1") && (!v.Success || v.Groups[1].Value == "0");
+                if (good) ok++;
+                parts.Add(e.Short + ": " + fps + " FPS limit");
+            }
+            detail = string.Join("  •  ", parts);
+            if (ok == emus.Count) return FeatureState.On;
+            return ok == 0 ? FeatureState.Off : FeatureState.Partial;
         }
 
         public static FeatureState Defender(out string detail)
         {
-            detail = "";
-            if (!Directory.Exists(@"C:\ProgramData\BlueStacks_nxt")) { detail = "BlueStacks 5 install nahi hai"; return FeatureState.NotAvailable; }
+            var folders = Tweaks.EmuFolders();
+            if (folders.Count == 0) { detail = "BlueStacks / MSI install nahi hai"; return FeatureState.NotAvailable; }
             string o = Run("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"(Get-MpPreference).ExclusionPath -join '|'\"", 20000);
-            bool has = o.IndexOf(@"BlueStacks_nxt", StringComparison.OrdinalIgnoreCase) >= 0;
-            detail = has ? "BlueStacks scan se bahar hai" : "Defender BlueStacks ko scan karta hai";
-            return has ? FeatureState.On : FeatureState.Off;
+            int has = folders.Count(f => o.IndexOf(f, StringComparison.OrdinalIgnoreCase) >= 0);
+            detail = has == folders.Count ? "Emulator scan se bahar hai" : has == 0 ? "Defender emulator ko scan karta hai" : "Kuch folder abhi bhi scan me";
+            return has == folders.Count ? FeatureState.On : has == 0 ? FeatureState.Off : FeatureState.Partial;
         }
 
         public static FeatureState Nvidia(string gpuName, out string detail)
         {
             if (gpuName == null) { detail = "NVIDIA card nahi mila"; return FeatureState.NotAvailable; }
-            bool applied = RegInt(Registry.CurrentUser, @"Software\NabaGameBooster", "NvidiaApplied") == 1;
+            int? v = RegInt(Registry.CurrentUser, @"Software\NabaGameBooster", "NvidiaApplied");
+            if (v == 2) { detail = gpuName + "  •  4 setting lagi"; return FeatureState.On; }
+            if (v == 1) { detail = "2 nayi setting (VSync off, Low Latency) baaki - switch dabao"; return FeatureState.Partial; }
             detail = gpuName;
-            return applied ? FeatureState.On : FeatureState.Off;
+            return FeatureState.Off;
         }
 
         public static FeatureState Mouse(out string detail)

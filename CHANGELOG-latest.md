@@ -1,7 +1,9 @@
-v1.2.0 - Naye boost + Startup manager + Aim Trainer:
-- Game Mode: "Claude / ChatGPT bhi pause" switch
-- BlueStacks Turbo: hamesha HIGH priority + RTX GPU + fullscreen fix
-- RAM Cleaner: Game Mode me har 5 min cache RAM saaf, aur "RAM saaf karo" button
-- Timer 0.5ms: Game Mode me smooth frames aur jaldi input
-- STARTUP APPS tab: PC chalu hote hi khulne wale apps switch se band/chalu
-- AIM TRAINER tab: 30 second headshot practice (chalte/chhote target, best score)
+v1.3.0 - 240 FPS + MSI App Player + FPS Test:
+- MSI App Player support (BlueStacks 5 ke saath)
+- BlueStacks / MSI Optimize: FPS limit 240, High FPS ON, VSync OFF
+- NVIDIA Boost me 4 setting: Max performance, Shader cache unlimited, VSync Force OFF, Low Latency ON
+- FPS TEST: asli FPS pehle vs baad (Intel PresentMon se), share karne ke liye result card
+- 240 FPS guide (Free Fire MAX x86 + game settings)
+- Game Mode me Windows Update / Search / SysMain rukte hain (FPS drop kam), STOP pe wapas
+- Ek hi scroll panel: Optimize, 240 FPS, FPS Test, Startup Apps (Aim Trainer hataya)
+- Windows 10 pe Timer ka note

@@ -1,6 +1,6 @@
 # Naba Game Booster
 
-Windows ke liye chhota sa gaming booster. Khaas taur pe **BlueStacks + Free Fire** ke liye.
+Windows 10/11 (64-bit) ke liye gaming booster. Khaas taur pe **BlueStacks 5 / MSI App Player + Free Fire MAX** ke liye.
 
 ## Install
 1. [Releases](https://github.com/nabanur/naba-game-booster/releases/latest) se `NabaGameBooster-Setup.exe` download karo.
@@ -23,8 +23,9 @@ App khulte hi (aur har 2 ghante) GitHub pe naya version check karta hai. **Auto 
 | BlueStacks Turbo | Hamesha HIGH priority, high performance GPU, fullscreen optimization off |
 | RAM Cleaner | Game Mode me cache (standby) RAM har 5 min saaf |
 | Timer 0.5ms | Game Mode me Windows timer 0.5ms - smooth frames |
-| Startup Apps tab | PC chalu hote hi khulne wale apps band/chalu |
-| Aim Trainer tab | 30 second headshot practice |
+| Startup Apps | PC chalu hote hi khulne wale apps band/chalu |
+| FPS Test | Asli FPS pehle vs baad (Intel PresentMon), result card |
+| 240 FPS | BlueStacks/MSI FPS limit 240 + NVIDIA VSync off + guide |
 
 ## Naya version kaise nikale
 `src/NabaGameBooster.csproj` me kuch badlo, `CHANGELOG-latest.md` me likho kya naya hai, phir tag push karo:
@@ -35,4 +36,7 @@ git push origin v1.0.1
 GitHub Actions khud build karke Release bana dega. Saare PCs pe "Update karo" aa jayega.
 
 ## Third-party
-NVIDIA settings ke liye [NVIDIA Profile Inspector](https://github.com/Orbmu2k/nvidiaProfileInspector) (MIT License) app ke saath aata hai.
+- [NVIDIA Profile Inspector](https://github.com/Orbmu2k/nvidiaProfileInspector) (MIT) - NVIDIA settings
+- [Intel PresentMon](https://github.com/GameTechDev/PresentMon) (MIT) - FPS test
+
+Details: `THIRD-PARTY-NOTICES.txt` (app folder me).
