@@ -831,6 +831,7 @@ namespace NabaGameBooster
     internal class BoostRing : Control
     {
         private float shown, target; private bool done;
+        public string RunText = "BOOSTING", DoneText = "BOOSTED";
         private readonly Timer tm = new Timer { Interval = 16 };
         private readonly System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
         public BoostRing()
@@ -880,7 +881,7 @@ namespace NabaGameBooster
             }
             using (var f = Theme.Semi(7.5F))
             {
-                string cap = fin ? "BOOSTED" : "BOOSTING";
+                string cap = fin ? DoneText : RunText;
                 var sz = TextRenderer.MeasureText(g, cap, f, Size.Empty, TextFormatFlags.NoPadding);
                 TextRenderer.DrawText(g, cap, f, new Point((Width - sz.Width) / 2, Height / 2 + 14), Theme.SubText, TextFormatFlags.NoPadding);
             }

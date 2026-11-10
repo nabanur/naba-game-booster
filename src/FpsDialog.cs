@@ -30,6 +30,7 @@ namespace NabaGameBooster
             int rec = Math.Max(60, Math.Min(240, monitorHz));
             int y = 92;
             AddOption(rec + " FPS  -  Smooth (sujhaya)", "Monitor ke barabar, FPS tika rahega", rec, ref y, true, current);
+            if (rec >= 75) AddOption((rec - 3) + " FPS  -  G-SYNC / FreeSync", "Sirf tab chuno jab monitor me FreeSync + NVIDIA me G-SYNC ON ho", rec - 3, ref y, false, current);
             if (rec != 120) AddOption("120 FPS  -  Stable", "Free Fire ka aam high setting", 120, ref y, false, current);
             if (rec != 240) AddOption("240 FPS  -  Max", "Sabse upar - kamzor PC pe upar-neeche ho sakta hai", 240, ref y, false, current);
 

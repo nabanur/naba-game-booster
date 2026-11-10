@@ -274,6 +274,23 @@ namespace NabaGameBooster
             scroll.Controls.Add(boostCard);
             y += 128;
 
+            // ---- LAG FIX ----
+            var lagCard = new Card { Location = new Point(0, y), Size = new Size(454, 92), Neon = true, ChamferSize = 14, NeonA = Theme.Purple, NeonB = Color.FromArgb(60, 140, 255), Fill = Color.FromArgb(20, 18, 44) };
+            lagCard.Controls.Add(new IconBox { IconName = "eye", IconColor = Color.FromArgb(150, 120, 255), Location = new Point(20, 18), Size = new Size(28, 28) });
+            lagCard.Controls.Add(new Label { Text = "LAG FIX", Font = Theme.Heavy(14F), ForeColor = Color.FromArgb(170, 140, 255), Location = new Point(52, 16), AutoSize = true, BackColor = Color.Transparent });
+            lagCard.Controls.Add(new Label { Text = "High FPS par bhi laggy? Har wajah khud dhoondh ke theek", Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(23, 50), Size = new Size(262, 34), BackColor = Color.Transparent });
+            var lagBtn = new RoundButton { Text = "SCAN + FIX", IconName = "refresh", ChamferShape = true, GlowColor = Theme.Purple, Location = new Point(292, 16), Size = new Size(150, 60), Fill = Theme.Purple, Fill2 = Theme.PurpleDark, Font = Theme.Heavy(12F) };
+            lagBtn.Click += (s, e) =>
+            {
+                if (busy) return;
+                using (var d = new LagDialog(PcProfile.Current, Log)) d.ShowDialog(this);
+                RefreshStates();
+            };
+            lagCard.Controls.Add(lagBtn);
+            allButtons.Add(lagBtn);
+            scroll.Controls.Add(lagCard);
+            y += 102;
+
             scroll.Controls.Add(SectionLabel("OPTIMIZE", 4, y));
             scroll.Controls.Add(new Label { Text = "Switch dabao - setting lagegi ya hategi", ForeColor = Theme.SubText, Font = Theme.F(9F), AutoSize = true, Location = new Point(212, y + 7), BackColor = Color.Transparent });
             y += 38;

@@ -13,7 +13,7 @@ namespace NabaGameBooster
     internal static class Tweaks
     {
         // ---------------- helpers ----------------
-        private static string Run(string exe, string args, int timeoutMs = 60000)
+        internal static string Run(string exe, string args, int timeoutMs = 60000)
         {
             var psi = new ProcessStartInfo(exe, args)
             {
