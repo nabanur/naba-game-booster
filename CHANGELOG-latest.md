@@ -1,14 +1,7 @@
-## Naba Game Booster v1.9.0 — LAG FIX
+## Naba Game Booster v1.10.0 — Jhatka Recorder
 
-Naya **LAG FIX** button (BOOST ke neeche): "High FPS par bhi laggy" ki har wajah khud dhoondh ke theek karta hai.
-
-- Monitor refresh rate — Windows kam Hz pe chala raha ho to apne aap full Hz (jaise 100 Hz)
-- Cable check — HDMI / DisplayPort pehchanta hai, FreeSync / G-SYNC ki guide
-- BlueStacks full screen — window mode me ho to apne aap full screen (window mode me delay aata hai)
-- FPS monitor se zyada ho (jhatke) to monitor ke Hz pe set
-- Background me CPU khane wali apps dikhata hai
-- Internet: ping, jitter, packet loss test + Wi-Fi power saving band
-- NVIDIA low-latency settings check / laga deta hai
-- Fast Mode check (restart baaki ho to batata hai)
-- Aakhir me saaf list: kya app ne theek kiya, kya aapko karna hai
-- FPS LIMIT me naya option: G-SYNC / FreeSync (monitor Hz - 3)
+- Game Mode START karte hi **Jhatka Recorder** chupchaap chalta hai: har second CPU, RAM, disk, internet ping aur sabse bhari app note karta hai
+- Jhatke ke pal pakadta hai: CPU full, RAM khatam, disk 100%, ping spike / packet loss, background app ka CPU khana
+- Game Mode STOP karte hi **Jhatka Report**: asli wajah, kis time kya hua, aur uska fix
+- Poora data `%LOCALAPPDATA%\NabaGameBooster\jhatka` me save (pichhli 10 report)
+- Bahut halka - game pe asar nahi

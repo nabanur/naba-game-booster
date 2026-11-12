@@ -117,7 +117,7 @@ namespace NabaGameBooster
             FormClosing += (s, e) =>
             {
                 if (busy) { e.Cancel = true; Info("Abhi kaam chal raha hai - thoda ruko, phir band karo."); return; }
-                if (GameMode.IsOn) { Cursor = Cursors.WaitCursor; try { GameMode.SafetyResume(Log); } catch { } }
+                if (GameMode.IsOn) { Cursor = Cursors.WaitCursor; try { Jhatka.Stop(); } catch { } try { GameMode.SafetyResume(Log); } catch { } }
             };
 
             Shown += (s, e) =>
@@ -186,8 +186,17 @@ namespace NabaGameBooster
             gmButton.Click += (s, e) =>
             {
                 if (busy) return;
-                if (GameMode.IsOn) RunJob("Game Mode STOP", GameMode.Off);
-                else RunJob("Game Mode START", GameMode.On);
+                if (GameMode.IsOn)
+                    RunJob("Game Mode STOP", log => { Jhatka.Stop(); GameMode.Off(log); }, () =>
+                    {
+                        var rep = Jhatka.LastReport;
+                        if (!string.IsNullOrEmpty(rep) && rep.IndexOf("bahut kam der", StringComparison.Ordinal) < 0)
+                        {
+                            Log("Jhatka report taiyar (" + Jhatka.Folder + ")");
+                            using (var d = new JhatkaDialog(rep)) d.ShowDialog(this);
+                        }
+                    });
+                else RunJob("Game Mode START", log => { GameMode.On(log); if (GameMode.IsOn) { Jhatka.Start(); log("Jhatka Recorder ON - match ke baad STOP dabao, report milegi."); } });
             };
             gmStatus = new Label { Location = new Point(26, 190), Size = new Size(286, 22), Font = Theme.Semi(10F), BackColor = Color.Transparent };
             var hint = new Label
@@ -644,7 +653,7 @@ namespace NabaGameBooster
             RefreshGameButton();
         }
 
-        private void RunJob(string name, Action<Action<string>> job)
+        private void RunJob(string name, Action<Action<string>> job, Action after = null)
         {
             if (busy) return;
             SetBusy(true);
@@ -653,7 +662,7 @@ namespace NabaGameBooster
             {
                 try { job(Log); }
                 catch (Exception ex) { Log("Gadbad: " + ex.Message); }
-            }).ContinueWith(t => BeginInvoke(new Action(() => { SetBusy(false); RefreshLive(); RefreshStates(); })));
+            }).ContinueWith(t => BeginInvoke(new Action(() => { SetBusy(false); RefreshLive(); RefreshStates(); if (after != null) try { after(); } catch { } })));
         }
 
         // ================= Refresh =================
