@@ -322,8 +322,8 @@ namespace NabaGameBooster
                         sb.AppendLine(string.Format("•  {0}: {1} jhatke ({2:0}%)", names[kv.Key], kv.Value, 100.0 * kv.Value / fr.Hitches.Count));
                     sb.AppendLine();
                     var topWhy = why.OrderByDescending(x => x.Value).First().Key;
-                    if (topWhy == "thread") fixes.Add("Main thread full: Free Fire graphics Smooth karo, aur app ka SETTING TEST chalao (Vulkan vs OpenGL) - jo kam jhatke de wahi rakho.");
-                    if (topWhy == "gpu") fixes.Add("GPU full: BlueStacks resolution 1600x900 karo ya Free Fire graphics kam karo - SETTING TEST me ye bhi test hota hai.");
+                    if (topWhy == "thread") fixes.Add("Main thread full: SETTING TEST chalao (Vulkan vs OpenGL) - jo kam jhatke de wahi rakho. Quality kam nahi hogi.");
+                    if (topWhy == "gpu") fixes.Add("GPU full: SETTING TEST chalao; NVIDIA driver update rakho. (Quality high rakhni hai to resolution mat ghatao.)");
                     if (topWhy == "game") fixes.Add("PC ka koi hissa full nahi tha - jhatka game/emulator ka apna hai. SETTING TEST chalao, renderer badalne se aksar kam hota hai.");
                     any = true;
                     sb.AppendLine("JHATKE KE PAL:");
@@ -347,7 +347,7 @@ namespace NabaGameBooster
             {
                 any = true;
                 sb.AppendLine("•  CPU poora bhara: " + cpuN + " baar");
-                if (appN == 0) fixes.Add("CPU khud game/BlueStacks se bhar raha hai (fight me effects). Free Fire graphics Smooth/Standard karo, aur BlueStacks resolution 1600x900 try karo.");
+                if (appN == 0) fixes.Add("CPU khud game/BlueStacks se bhar raha hai (fight me effects). SETTING TEST se renderer badal ke dekho.");
             }
             if (ramN > 0) { any = true; sb.AppendLine("•  RAM khatam hone ke kareeb: " + ramN + " baar"); fixes.Add("RAM kam pad rahi: Chrome / Premiere band karke khelo, ya BlueStacks RAM 4 GB karo."); }
             if (diskN > 0) { any = true; sb.AppendLine("•  Disk 100%: " + diskN + " baar"); fixes.Add("Disk busy ho raha (Windows Update / antivirus scan / download). Game Mode me \"Windows Update / Search band\" ON rakho."); }
@@ -357,7 +357,7 @@ namespace NabaGameBooster
             {
                 sb.AppendLine("•  CPU, RAM, disk, internet, background - sab theek rahe.");
                 if (fixes.Count == 0)
-                fixes.Add("Jo jhatka laga woh Free Fire ka apna load tha (naye effect / skin pehli baar load). Graphics Smooth karo; pehli 1-2 fight ke baad kam ho jata hai.");
+                fixes.Add("Jo jhatka laga woh Free Fire ka apna load tha (naye effect / skin pehli baar load). Pehli 1-2 fight ke baad kam ho jata hai; SETTING TEST se renderer badal ke dekho.");
             }
 
             sb.AppendLine();

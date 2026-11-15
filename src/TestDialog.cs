@@ -63,7 +63,7 @@ namespace NabaGameBooster
             rounds.Add(new Round { Name = "Round 1:  Abhi wali", Desc = RN(rend) + "  •  " + w + "x" + h });
             var r2 = new Round { Name = "Round 2:  " + RN(other), Desc = RN(other) + "  •  " + w + "x" + h };
             r2.Values["graphics_renderer"] = other; rounds.Add(r2);
-            bool big = int.Parse(w) > 1600;
+            bool big = false;   // user ko quality high chahiye - resolution kam karne wala round nahi
             if (big)
             {
                 var r3 = new Round { Name = "Round 3:  Halki resolution", Desc = RN(rend) + "  •  1600x900  (GPU pe kam bojh)" };
@@ -119,7 +119,7 @@ namespace NabaGameBooster
                     "3. Match shuru hote hi \"RECORDING SHURU\" dabao, fight karo.\n" +
                     "4. 2-4 min ke baad \"MATCH KHATAM\" dabao.\n\n" +
                     "Har round me yahi. Aakhir me app sabse kam jhatke wali setting khud laga degi.\n" +
-                    "Har round me Free Fire ki graphics same rakhna (taaki muqabla sahi ho).";
+                    "Graphics / resolution kam nahi hogi - sirf BlueStacks ka renderer test hoga.\nHar round me Free Fire ki graphics same rakhna (taaki muqabla sahi ho).";
 
             FormClosing += (s, e) =>
             {
@@ -235,7 +235,7 @@ namespace NabaGameBooster
 
             stepText.Text = "RESULT\n\n" + (why.Count == 0 ? "Abhi wali setting hi sabse achhi hai - kuch nahi badla." : "Lag rahi hai: " + string.Join(", ", why) + ".") +
                             "\n\nBlueStacks best setting ke saath dobara khulega.\n\n" +
-                            "Tip: Free Fire graphics Smooth + High FPS ON rakhna.";
+                            "Graphics quality wahi rahegi jo aapne rakhi hai.";
             phase = 3; mainBtn.Text = "THEEK HAI";
             if (mainLog != null) mainLog("Setting Test poora: " + (why.Count == 0 ? "abhi wali setting best" : string.Join(", ", why)));
             ApplyAndLaunch(best, "Best setting", true);
