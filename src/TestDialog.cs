@@ -33,6 +33,10 @@ namespace NabaGameBooster
         private DateTime recStart;
         private bool working, applied;
         private readonly Timer clock = new Timer { Interval = 1000 };
+        private string mode = "fps";
+        private RoundButton modeFps, modeRend;
+        private readonly Card box;
+        private Func<string, string> RN = r => r == "gl" ? "OpenGL" : r == "vlcn" ? "Vulkan" : r == "dx" ? "DirectX" : r;
 
         public TestDialog(Action<string> logger)
         {
@@ -51,38 +55,18 @@ namespace NabaGameBooster
             Controls.Add(new Label { Text = "SETTING TEST", Font = Theme.Heavy(16F), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(56, 16) });
             Controls.Add(new Label { Text = "Har setting pe ek match - app frame-by-frame naap ke best setting khud lagayegi", Font = Theme.F(9F), ForeColor = Theme.SubText, AutoSize = true, Location = new Point(58, 50) });
 
-            // ---- rounds ----
-            string rend = emu != null ? (BsControl.Get(emu, inst, "graphics_renderer") ?? "vlcn") : "vlcn";
-            string other = rend == "gl" ? "vlcn" : "gl";
-            string w = emu != null ? (BsControl.Get(emu, inst, "fb_width") ?? "1920") : "1920";
-            string h = emu != null ? (BsControl.Get(emu, inst, "fb_height") ?? "1080") : "1080";
-            string dpi = emu != null ? (BsControl.Get(emu, inst, "dpi") ?? "320") : "320";
-            original["graphics_renderer"] = rend; original["fb_width"] = w; original["fb_height"] = h; original["dpi"] = dpi;
-            Func<string, string> RN = r => r == "gl" ? "OpenGL" : r == "vlcn" ? "Vulkan" : r == "dx" ? "DirectX" : r;
+            // ---- original settings ----
+            if (emu != null)
+                foreach (var k in new[] { "graphics_renderer", "fb_width", "fb_height", "dpi", "max_fps" })
+                    original[k] = BsControl.Get(emu, inst, k) ?? "";
 
-            rounds.Add(new Round { Name = "Round 1:  Abhi wali", Desc = RN(rend) + "  •  " + w + "x" + h });
-            var r2 = new Round { Name = "Round 2:  " + RN(other), Desc = RN(other) + "  •  " + w + "x" + h };
-            r2.Values["graphics_renderer"] = other; rounds.Add(r2);
-            bool big = false;   // user ko quality high chahiye - resolution kam karne wala round nahi
-            if (big)
-            {
-                var r3 = new Round { Name = "Round 3:  Halki resolution", Desc = RN(rend) + "  •  1600x900  (GPU pe kam bojh)" };
-                r3.Values["fb_width"] = "1600"; r3.Values["fb_height"] = "900"; r3.Values["dpi"] = "240"; rounds.Add(r3);
-            }
-
-            int y = 84;
-            foreach (var r in rounds)
-            {
-                r.Row = new Card { Location = new Point(22, y), Size = new Size(556, 58), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
-                r.Row.Controls.Add(new Label { Text = r.Name, Font = Theme.Semi(10.5F), ForeColor = Theme.Text, Location = new Point(14, 7), AutoSize = true, BackColor = Color.Transparent });
-                r.Row.Controls.Add(new Label { Text = r.Desc, Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(15, 32), AutoSize = true, BackColor = Color.Transparent });
-                r.Status = new Label { Text = "baaki", Font = Theme.Semi(9F), ForeColor = Theme.SubText, Location = new Point(300, 8), Size = new Size(244, 42), TextAlign = ContentAlignment.MiddleRight, BackColor = Color.Transparent };
-                r.Row.Controls.Add(r.Status);
-                Controls.Add(r.Row);
-                y += 66;
-            }
-
-            var box = new Card { Location = new Point(22, y + 6), Size = new Size(556, 214), Neon = true, ChamferSize = 12, Fill = Theme.Card };
+            modeFps = new RoundButton { Text = "FPS TEST", ChamferShape = true, Font = Theme.Semi(9F), Location = new Point(330, 14), Size = new Size(120, 34) };
+            modeRend = new RoundButton { Text = "RENDERER TEST", ChamferShape = true, Font = Theme.Semi(9F), Location = new Point(458, 14), Size = new Size(120, 34) };
+            modeFps.Click += (s, e) => { if (cur < 0) { mode = "fps"; BuildRounds(); } };
+            modeRend.Click += (s, e) => { if (cur < 0) { mode = "rend"; BuildRounds(); } };
+            Controls.Add(modeFps); Controls.Add(modeRend);
+            int y = 84 + 3 * 66;
+            box = new Card { Location = new Point(22, y + 6), Size = new Size(556, 214), Neon = true, ChamferSize = 12, Fill = Theme.Card };
             stepText = new Label { Font = Theme.F(10F), ForeColor = Theme.Text, Location = new Point(22, 18), Size = new Size(512, 180), BackColor = Color.Transparent };
             box.Controls.Add(stepText);
             Controls.Add(box);
@@ -106,6 +90,7 @@ namespace NabaGameBooster
             };
             clock.Start();
 
+            BuildRounds();
             if (emu == null)
             {
                 stepText.Text = "BlueStacks / MSI App Player nahi mila.";
@@ -119,7 +104,7 @@ namespace NabaGameBooster
                     "3. Match shuru hote hi \"RECORDING SHURU\" dabao, fight karo.\n" +
                     "4. 2-4 min ke baad \"MATCH KHATAM\" dabao.\n\n" +
                     "Har round me yahi. Aakhir me app sabse kam jhatke wali setting khud laga degi.\n" +
-                    "Graphics / resolution kam nahi hogi - sirf BlueStacks ka renderer test hoga.\nHar round me Free Fire ki graphics same rakhna (taaki muqabla sahi ho).";
+                    "Graphics / resolution kam nahi hogi. Upar chuno: FPS TEST ya RENDERER TEST.\nHar round me Free Fire ki graphics same rakhna (taaki muqabla sahi ho).";
 
             FormClosing += (s, e) =>
             {
@@ -130,6 +115,57 @@ namespace NabaGameBooster
                 Jhatka.Label = "";
                 ApplyAndLaunch(original, "Purani setting wapas", false);
             };
+        }
+
+        private void BuildRounds()
+        {
+            foreach (var r in rounds) { Controls.Remove(r.Row); r.Row.Dispose(); }
+            rounds.Clear();
+            modeFps.Fill = mode == "fps" ? Theme.Accent : Theme.Row; modeFps.Fill2 = mode == "fps" ? Theme.AccentDark : Theme.Row;
+            modeRend.Fill = mode == "rend" ? Theme.Accent : Theme.Row; modeRend.Fill2 = mode == "rend" ? Theme.AccentDark : Theme.Row;
+            modeFps.Invalidate(); modeRend.Invalidate();
+            if (emu == null) return;
+            string rend; original.TryGetValue("graphics_renderer", out rend); if (string.IsNullOrEmpty(rend)) rend = "vlcn";
+            string res = string.IsNullOrEmpty(original["fb_width"]) ? "default res" : original["fb_width"] + "x" + original["fb_height"];
+            int f; if (!int.TryParse(original["max_fps"], out f) || f < 30) f = 100;
+
+            if (mode == "rend")
+            {
+                string other = rend == "gl" ? "vlcn" : "gl";
+                rounds.Add(new Round { Name = "Round 1:  Abhi wali", Desc = RN(rend) + "  •  " + res + "  •  " + f + " FPS" });
+                var r2 = new Round { Name = "Round 2:  " + RN(other), Desc = RN(other) + "  •  " + res + "  •  " + f + " FPS" };
+                r2.Values["graphics_renderer"] = other; rounds.Add(r2);
+            }
+            else
+            {
+                var list = new List<int> { f };
+                int lower = Math.Max(60, f - 10), higher = f < 120 ? 120 : f + 24;
+                if (!list.Contains(lower)) list.Add(lower);
+                if (!list.Contains(higher)) list.Add(higher);
+                int n = 1;
+                foreach (var v in list)
+                {
+                    var r = new Round
+                    {
+                        Name = "Round " + n + ":  " + v + " FPS" + (n == 1 ? "  (abhi wali)" : ""),
+                        Desc = RN(rend) + "  •  " + res + (v < f ? "  •  CPU pe kam bojh, zyada stable" : v > f ? "  •  zyada FPS" : "")
+                    };
+                    if (v != f) r.Values["max_fps"] = v.ToString();
+                    rounds.Add(r); n++;
+                }
+            }
+
+            int y = 84;
+            foreach (var r in rounds)
+            {
+                r.Row = new Card { Location = new Point(22, y), Size = new Size(556, 58), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
+                r.Row.Controls.Add(new Label { Text = r.Name, Font = Theme.Semi(10.5F), ForeColor = Theme.Text, Location = new Point(14, 7), AutoSize = true, BackColor = Color.Transparent });
+                r.Row.Controls.Add(new Label { Text = r.Desc, Font = Theme.F(8.5F), ForeColor = Theme.SubText, Location = new Point(15, 32), AutoSize = true, BackColor = Color.Transparent });
+                r.Status = new Label { Text = "baaki", Font = Theme.Semi(9F), ForeColor = Theme.SubText, Location = new Point(300, 8), Size = new Size(244, 42), TextAlign = ContentAlignment.MiddleRight, BackColor = Color.Transparent };
+                r.Row.Controls.Add(r.Status);
+                Controls.Add(r.Row);
+                y += 66;
+            }
         }
 
         private void Next()
@@ -146,6 +182,7 @@ namespace NabaGameBooster
         private void StartRound(int i)
         {
             cur = i; var r = rounds[i];
+            modeFps.Enabled = false; modeRend.Enabled = false;
             var vals = new Dictionary<string, string>(original);
             foreach (var kv in r.Values) vals[kv.Key] = kv.Value;
             r.Status.Text = "BlueStacks khul raha..."; r.Status.ForeColor = Theme.Accent;
@@ -158,6 +195,7 @@ namespace NabaGameBooster
                 if (!GameMode.IsOn) { try { GameMode.On(m => { }); } catch { } }
                 BsControl.Close();
                 bool ok = BsControl.Set(emu, inst, vals);
+                BsControl.AiHighlightsOff(emu);
                 BsControl.Launch(emu, inst);
                 return ok;
             }).ContinueWith(t => BeginInvoke(new Action(() =>
@@ -221,23 +259,21 @@ namespace NabaGameBooster
         private void Finish()
         {
             var r1 = rounds[0];
-            var best = new Dictionary<string, string>(original);
-            var why = new List<string>();
-            var r2 = rounds[1];
-            if (r2.Score > r1.Score * 1.03) { best["graphics_renderer"] = r2.Values["graphics_renderer"]; why.Add(r2.Desc.Split(' ')[0] + " renderer behtar nikla"); }
-            if (rounds.Count > 2)
-            {
-                var r3 = rounds[2];
-                if (r3.Score > r1.Score * 1.03) { foreach (var kv in r3.Values) best[kv.Key] = kv.Value; why.Add("1600x900 se jhatke kam hue"); }
-            }
             var winner = rounds.OrderByDescending(x => x.Score).First();
+            var best = new Dictionary<string, string>(original);
+            string why;
+            if (winner != r1 && winner.Score > r1.Score * 1.03)
+            {
+                foreach (var kv in winner.Values) best[kv.Key] = kv.Value;
+                why = winner.Name.Substring(winner.Name.IndexOf(':') + 1).Trim() + " sabse smooth nikla";
+                string fps; int fv; if (winner.Values.TryGetValue("max_fps", out fps) && int.TryParse(fps, out fv)) Settings.FpsLimit = fv;
+            }
+            else { winner = r1; why = "abhi wali setting hi sabse achhi hai"; }
             foreach (var r in rounds) if (r == winner) { r.Row.Border = Theme.Green; r.Row.Invalidate(); r.Status.Text = "BEST  •  " + r.Status.Text; }
 
-            stepText.Text = "RESULT\n\n" + (why.Count == 0 ? "Abhi wali setting hi sabse achhi hai - kuch nahi badla." : "Lag rahi hai: " + string.Join(", ", why) + ".") +
-                            "\n\nBlueStacks best setting ke saath dobara khulega.\n\n" +
-                            "Graphics quality wahi rahegi jo aapne rakhi hai.";
+            stepText.Text = "RESULT\n\n" + why + ".\n\nBlueStacks best setting ke saath dobara khulega.\nGraphics quality wahi rahegi jo aapne rakhi hai.";
             phase = 3; mainBtn.Text = "THEEK HAI";
-            if (mainLog != null) mainLog("Setting Test poora: " + (why.Count == 0 ? "abhi wali setting best" : string.Join(", ", why)));
+            if (mainLog != null) mainLog("Setting Test poora: " + why);
             ApplyAndLaunch(best, "Best setting", true);
         }
 
@@ -249,6 +285,7 @@ namespace NabaGameBooster
             {
                 BsControl.Close();
                 BsControl.Set(e, i, vals);
+                BsControl.AiHighlightsOff(e);
                 if (launch) BsControl.Launch(e, i);
             });
             if (mainLog != null) mainLog(what + " lag rahi hai (BlueStacks restart).");

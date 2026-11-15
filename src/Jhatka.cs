@@ -23,6 +23,7 @@ namespace NabaGameBooster
         public class Sample { public DateTime T; public double Cpu, Emu, Thread, Gpu, Ram, Disk; public int Ping; public string Top; public double TopPct; }
         private static readonly List<Sample> samples = new List<Sample>();
         private static FrameMon frameMon;
+        private static Process smi; private static volatile int smiGpu = -1;
         public static FrameMon.Result LastFrames;
         public static double LastThreadAvg, LastGpuAvg;
         public static string Label = "";      // Setting Test ke liye: is round ki setting
@@ -64,6 +65,7 @@ namespace NabaGameBooster
                 }
                 catch { csv = null; }
                 running = true;
+                StartSmi();
                 frameMon = new FrameMon();
                 if (!frameMon.Start()) frameMon = null;
                 worker = new Thread(Loop) { IsBackground = true, Priority = ThreadPriority.BelowNormal }; worker.Start();
@@ -80,6 +82,8 @@ namespace NabaGameBooster
             }
             try { if (worker != null) worker.Join(2500); } catch { }
             try { if (pinger != null) pinger.Join(1500); } catch { }
+            try { if (smi != null && !smi.HasExited) smi.Kill(); } catch { }
+            smi = null;
             FrameMon.Result fr = null;
             try { if (frameMon != null) fr = frameMon.Stop(); } catch { }
             frameMon = null;
@@ -94,6 +98,35 @@ namespace NabaGameBooster
                 try { File.WriteAllText(Path.Combine(Folder, "report-" + started.ToString("yyyyMMdd-HHmmss") + ".txt"), LastReport, new UTF8Encoding(false)); } catch { }
                 return LastReport;
             }
+        }
+
+        /// <summary>NVIDIA ka apna tool - GPU use har second (Windows counter se zyada bharosemand).</summary>
+        private static void StartSmi()
+        {
+            smiGpu = -1;
+            try
+            {
+                string exe = null;
+                foreach (var pth in new[] { Environment.ExpandEnvironmentVariables(@"%SystemRoot%\System32\nvidia-smi.exe"), Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\NVIDIA Corporation\NVSMI\nvidia-smi.exe") })
+                    if (File.Exists(pth)) { exe = pth; break; }
+                if (exe == null) return;
+                smi = Process.Start(new ProcessStartInfo(exe, "--query-gpu=utilization.gpu --format=csv,noheader,nounits -lms 1000")
+                { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true });
+                var p = smi;
+                new Thread(() =>
+                {
+                    try
+                    {
+                        string l;
+                        while ((l = p.StandardOutput.ReadLine()) != null)
+                        {
+                            int v; if (int.TryParse(l.Split(',')[0].Trim(), out v)) smiGpu = v;
+                        }
+                    }
+                    catch { }
+                }) { IsBackground = true }.Start();
+            }
+            catch { smi = null; }
         }
 
         private static void PingLoop()
@@ -200,7 +233,7 @@ namespace NabaGameBooster
                     catch { }
 
                     // GPU 3D use (sab process mila ke)
-                    try
+                    if (smi == null) try
                     {
                         if (gpuCtr == null || tick % 10 == 0)
                         {
@@ -223,6 +256,7 @@ namespace NabaGameBooster
                     else { topName = ""; topPct = 0; }
                 }
 
+                if (smiGpu >= 0) gpu = smiGpu;
                 int ping; lock (gate) ping = lastPing;
                 lock (gate)
                 {

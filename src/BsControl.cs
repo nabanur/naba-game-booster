@@ -67,6 +67,7 @@ namespace NabaGameBooster
                 string nl = text.Contains("\r\n") ? "\r\n" : "\n";
                 foreach (var kv in values)
                 {
+                    if (string.IsNullOrEmpty(kv.Value)) continue;
                     var rx = new Regex(@"(bst\.instance\." + Regex.Escape(inst) + @"\." + Regex.Escape(kv.Key) + @"=)""[^""]*""");
                     if (rx.IsMatch(text)) text = rx.Replace(text, "${1}\"" + kv.Value + "\"", 1);
                     else text = text.TrimEnd('\r', '\n') + nl + "bst.instance." + inst + "." + kv.Key + "=\"" + kv.Value + "\"" + nl;
@@ -76,6 +77,25 @@ namespace NabaGameBooster
             }
             catch { return false; }
         }
+
+        /// <summary>bst.KEY="value" (instance ke bahar wali setting).</summary>
+        public static bool SetGlobal(Emu e, string key, string value)
+        {
+            if (Running) return false;
+            try
+            {
+                string text = File.ReadAllText(e.Conf);
+                string nl = text.Contains("\r\n") ? "\r\n" : "\n";
+                var rx = new Regex(@"(?m)^(bst\." + Regex.Escape(key) + @"=)""[^""]*""");
+                string nt = rx.IsMatch(text) ? rx.Replace(text, "${1}\"" + value + "\"", 1) : text.TrimEnd('\r', '\n') + nl + "bst." + key + "=\"" + value + "\"" + nl;
+                if (nt != text) File.WriteAllText(e.Conf, nt, new UTF8Encoding(false));
+                return true;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>BlueStacks ka AI Highlights (game ki screen pe image detection) band - fight me extra kaam hatao.</summary>
+        public static void AiHighlightsOff(Emu e) { SetGlobal(e, "enable_ai_highlights", "0"); }
 
         public static bool Running { get { return Process.GetProcessesByName("HD-Player").Length > 0; } }
 
