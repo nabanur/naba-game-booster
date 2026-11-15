@@ -284,7 +284,7 @@ namespace NabaGameBooster
             catch { return false; }
         }
 
-        private static void SetBlueStacksPriority(ProcessPriorityClass pc)
+        internal static void SetBlueStacksPriority(ProcessPriorityClass pc)
         {
             foreach (var p in Process.GetProcesses())
             {

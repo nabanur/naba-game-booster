@@ -56,6 +56,23 @@ jobs:
           }
           Test-Path build\tools\naba.nip
 
+      - name: Intel PresentMon (MIT) - frame / jhatka recorder ke liye
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $rel = Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; 'User-Agent' = 'naba-build' } `
+                 -Uri 'https://api.github.com/repos/GameTechDev/PresentMon/releases/latest'
+          Write-Host "PresentMon $($rel.tag_name) assets:"; $rel.assets | ForEach-Object { Write-Host "  $($_.name)" }
+          $asset = $rel.assets | Where-Object { $_.name -match '^PresentMon-[\d\.]+-x64\.exe$' } | Select-Object -First 1
+          if (-not $asset) { throw "PresentMon x64 console exe nahi mila" }
+          New-Item -ItemType Directory -Force build\tools\PresentMon | Out-Null
+          Invoke-WebRequest $asset.browser_download_url -OutFile build\tools\PresentMon\PresentMon.exe
+          Write-Host "---- PresentMon --help ----"
+          & build\tools\PresentMon\PresentMon.exe --help 2>&1 | Select-Object -First 120 | ForEach-Object { Write-Host $_ }
+          $global:LASTEXITCODE = 0
+          exit 0
+
       - name: Installer banao (Inno Setup)
         shell: pwsh
         run: |
