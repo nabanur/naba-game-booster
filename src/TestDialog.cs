@@ -104,8 +104,8 @@ namespace NabaGameBooster
                     "Kaise hoga:\n" +
                     "1. App BlueStacks band karke setting badlegi aur Free Fire khud kholegi.\n" +
                     "2. Aap ek match shuru karo (Clash Squad / BR - jisme fight ho).\n" +
-                    "3. Match shuru hote hi \"RECORDING SHURU\" dabao, fight karo.\n" +
-                    "4. 2-4 min ke baad \"MATCH KHATAM\" dabao.\n\n" +
+                    "3. Match me ghuste hi F9 dabao (recording shuru), fight karo.\n" +
+                    "4. 2-4 min ke baad phir F9 (match khatam). Ye window band mat karna.\n\n" +
                     "Har round me yahi. Aakhir me app sabse kam jhatke wali setting khud laga degi.\n" +
                     "Graphics / resolution kam nahi hogi. Upar chuno: FPS TEST ya RENDERER TEST.\nHar round me Free Fire ki graphics same rakhna (taaki muqabla sahi ho).";
 
@@ -118,6 +118,27 @@ namespace NabaGameBooster
                 Jhatka.Label = "";
                 ApplyAndLaunch(original, "Purani setting wapas", false);
             };
+        }
+
+        // ---- F9: game ke andar se hi recording shuru / khatam (Alt+Tab ki zaroorat nahi) ----
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr h, int id);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool MessageBeep(uint t);
+        private bool hotkey;
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); try { hotkey = RegisterHotKey(Handle, 9, 0x4000 /*NOREPEAT*/, 0x78 /*F9*/); } catch { } }
+        protected override void OnHandleDestroyed(EventArgs e) { try { UnregisterHotKey(Handle, 9); } catch { } base.OnHandleDestroyed(e); }
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x0312 && m.WParam.ToInt32() == 9)   // WM_HOTKEY
+            {
+                if (!working && (phase == 1 || (phase == 2 && (DateTime.Now - recStart).TotalSeconds >= 90)))
+                {
+                    try { Console.Beep(phase == 1 ? 1200 : 700, 180); } catch { }
+                    Next();
+                }
+                else try { MessageBeep(0x10); } catch { }
+            }
+            base.WndProc(ref m);
         }
 
         private void BuildRounds()
@@ -227,8 +248,9 @@ namespace NabaGameBooster
                 stepText.Text = r.Name + "  (" + r.Desc + ")\n\n" +
                     "1. Free Fire khul raha hai - load hone do.\n" +
                     "2. F11 se full screen karo.\n" +
-                    "3. Match shuru karo. Jaise hi match me ghuso, Alt+Tab karke neeche button dabao:\n\n" +
-                    "            RECORDING SHURU";
+                    "3. Match shuru karo. Match me ghuste hi keyboard pe  F9  dabao (game ke andar se hi).\n" +
+                    "   Beep aayegi = recording shuru.\n\n" +
+                    "Ye window band MAT karna - band karne se test ruk jata hai aur purani setting wapas lagti hai.";
                 mainBtn.Text = "RECORDING SHURU";
             })));
         }
@@ -241,7 +263,7 @@ namespace NabaGameBooster
             Jhatka.Start();
             recStart = DateTime.Now; phase = 2;
             stepText.Text = r.Name + "  (" + r.Desc + ")\n\nRECORDING chal rahi hai. Wapas game me jao aur fight karo.\n\n" +
-                            "Kam se kam 1:30, achha ho 2-4 min. Match khatam hone par Alt+Tab karke \"MATCH KHATAM\" dabao.";
+                            "Kam se kam 1:30, achha ho 2-4 min. Match khatam hone par phir se  F9  dabao (ya yahan MATCH KHATAM).";
             WindowState = FormWindowState.Minimized;
         }
 

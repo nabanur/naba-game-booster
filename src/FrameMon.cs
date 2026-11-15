@@ -112,6 +112,13 @@ namespace NabaGameBooster
         {
             var r = new Result();
             if (fr == null || fr.Count < 30) return r;
+            // shuru ke 20 sec (game / BlueStacks load ho raha) gino mat - loading ke lambe frame FPS ko galat dikhate hain
+            if ((fr[fr.Count - 1].Key - fr[0].Key).TotalSeconds > 60)
+            {
+                var t0 = fr[0].Key.AddSeconds(20);
+                var trimmed = fr.Where(x => x.Key >= t0).ToList();
+                if (trimmed.Count >= 30) fr = trimmed;
+            }
             var ft = fr.Select(x => x.Value).ToList();
             double total = ft.Sum();
             var sorted = ft.OrderByDescending(x => x).ToList();
