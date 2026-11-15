@@ -112,10 +112,14 @@ namespace NabaGameBooster
                     p.Width = 1280; p.Height = 720; p.Dpi = 240;
                     break;
             }
+            // Setting Test ne jo CPU core chune (jaise 8) - wahi rakho
+            int ov = Settings.GetInt("EmuCpus", 0);
+            if (ov >= 2 && ov <= Math.Max(2, p.Threads)) p.BsCpus = ov;
             return p;
         }
 
         private static PcProfile cached;
         public static PcProfile Current { get { if (cached == null) cached = Detect(); return cached; } }
+        public static void Reset() { cached = null; }
     }
 }

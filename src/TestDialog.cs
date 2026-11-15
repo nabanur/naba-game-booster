@@ -33,8 +33,8 @@ namespace NabaGameBooster
         private DateTime recStart;
         private bool working, applied;
         private readonly Timer clock = new Timer { Interval = 1000 };
-        private string mode = "fps";
-        private RoundButton modeFps, modeRend;
+        private string mode = "cpu";
+        private RoundButton modeFps, modeRend, modeCpu;
         private readonly Card box;
         private Func<string, string> RN = r => r == "gl" ? "OpenGL" : r == "vlcn" ? "Vulkan" : r == "dx" ? "DirectX" : r;
 
@@ -57,11 +57,14 @@ namespace NabaGameBooster
 
             // ---- original settings ----
             if (emu != null)
-                foreach (var k in new[] { "graphics_renderer", "fb_width", "fb_height", "dpi", "max_fps" })
+                foreach (var k in new[] { "graphics_renderer", "fb_width", "fb_height", "dpi", "max_fps", "cpus" })
                     original[k] = BsControl.Get(emu, inst, k) ?? "";
 
-            modeFps = new RoundButton { Text = "FPS TEST", ChamferShape = true, Font = Theme.Semi(9F), Location = new Point(330, 14), Size = new Size(120, 34) };
-            modeRend = new RoundButton { Text = "RENDERER TEST", ChamferShape = true, Font = Theme.Semi(9F), Location = new Point(458, 14), Size = new Size(120, 34) };
+            modeCpu = new RoundButton { Text = "CPU TEST", ChamferShape = true, Font = Theme.Semi(8.5F), Location = new Point(298, 14), Size = new Size(88, 34) };
+            modeFps = new RoundButton { Text = "FPS TEST", ChamferShape = true, Font = Theme.Semi(8.5F), Location = new Point(392, 14), Size = new Size(88, 34) };
+            modeRend = new RoundButton { Text = "RENDERER", ChamferShape = true, Font = Theme.Semi(8.5F), Location = new Point(486, 14), Size = new Size(92, 34) };
+            modeCpu.Click += (s, e) => { if (cur < 0) { mode = "cpu"; BuildRounds(); } };
+            Controls.Add(modeCpu);
             modeFps.Click += (s, e) => { if (cur < 0) { mode = "fps"; BuildRounds(); } };
             modeRend.Click += (s, e) => { if (cur < 0) { mode = "rend"; BuildRounds(); } };
             Controls.Add(modeFps); Controls.Add(modeRend);
@@ -124,12 +127,27 @@ namespace NabaGameBooster
             modeFps.Fill = mode == "fps" ? Theme.Accent : Theme.Row; modeFps.Fill2 = mode == "fps" ? Theme.AccentDark : Theme.Row;
             modeRend.Fill = mode == "rend" ? Theme.Accent : Theme.Row; modeRend.Fill2 = mode == "rend" ? Theme.AccentDark : Theme.Row;
             modeFps.Invalidate(); modeRend.Invalidate();
+            modeCpu.Fill = mode == "cpu" ? Theme.Accent : Theme.Row; modeCpu.Fill2 = mode == "cpu" ? Theme.AccentDark : Theme.Row; modeCpu.Invalidate();
             if (emu == null) return;
             string rend; original.TryGetValue("graphics_renderer", out rend); if (string.IsNullOrEmpty(rend)) rend = "vlcn";
             string res = string.IsNullOrEmpty(original["fb_width"]) ? "default res" : original["fb_width"] + "x" + original["fb_height"];
             int f; if (!int.TryParse(original["max_fps"], out f) || f < 30) f = 100;
 
-            if (mode == "rend")
+            int c; if (!int.TryParse(original["cpus"], out c) || c < 1) c = 4;
+            if (mode == "cpu")
+            {
+                int threads = Environment.ProcessorCount;
+                var list = new List<int> { c };
+                foreach (var v in new[] { 8, 4 }) if (v <= threads - 2 && !list.Contains(v)) list.Add(v);
+                int n = 1;
+                foreach (var v in list)
+                {
+                    var r = new Round { Name = "Round " + n + ":  " + v + " CPU core" + (n == 1 ? "  (abhi wali)" : ""), Desc = RN(rend) + "  •  " + f + " FPS  •  " + v + " / " + threads + " thread BlueStacks ko" };
+                    if (v != c) r.Values["cpus"] = v.ToString();
+                    rounds.Add(r); n++;
+                }
+            }
+            else if (mode == "rend")
             {
                 string other = rend == "gl" ? "vlcn" : "gl";
                 rounds.Add(new Round { Name = "Round 1:  Abhi wali", Desc = RN(rend) + "  •  " + res + "  •  " + f + " FPS" });
@@ -182,7 +200,7 @@ namespace NabaGameBooster
         private void StartRound(int i)
         {
             cur = i; var r = rounds[i];
-            modeFps.Enabled = false; modeRend.Enabled = false;
+            modeFps.Enabled = false; modeRend.Enabled = false; modeCpu.Enabled = false;
             var vals = new Dictionary<string, string>(original);
             foreach (var kv in r.Values) vals[kv.Key] = kv.Value;
             r.Status.Text = "BlueStacks khul raha..."; r.Status.ForeColor = Theme.Accent;
@@ -267,6 +285,7 @@ namespace NabaGameBooster
                 foreach (var kv in winner.Values) best[kv.Key] = kv.Value;
                 why = winner.Name.Substring(winner.Name.IndexOf(':') + 1).Trim() + " sabse smooth nikla";
                 string fps; int fv; if (winner.Values.TryGetValue("max_fps", out fps) && int.TryParse(fps, out fv)) Settings.FpsLimit = fv;
+                string cp; int cv; if (winner.Values.TryGetValue("cpus", out cp) && int.TryParse(cp, out cv)) { Settings.SetInt("EmuCpus", cv); PcProfile.Reset(); }
             }
             else { winner = r1; why = "abhi wali setting hi sabse achhi hai"; }
             foreach (var r in rounds) if (r == winner) { r.Row.Border = Theme.Green; r.Row.Invalidate(); r.Status.Text = "BEST  •  " + r.Status.Text; }
