@@ -137,12 +137,14 @@ namespace NabaGameBooster
             if (mode == "cpu")
             {
                 int threads = Environment.ProcessorCount;
-                var list = new List<int> { c };
-                foreach (var v in new[] { 8, 4 }) if (v <= threads - 2 && !list.Contains(v)) list.Add(v);
+                var list = new List<int>();
+                if (8 <= threads - 2) list.Add(8);          // pehle 8 core
+                if (!list.Contains(c)) list.Add(c);
+                if (4 <= threads - 2 && !list.Contains(4)) list.Add(4);
                 int n = 1;
                 foreach (var v in list)
                 {
-                    var r = new Round { Name = "Round " + n + ":  " + v + " CPU core" + (n == 1 ? "  (abhi wali)" : ""), Desc = RN(rend) + "  •  " + f + " FPS  •  " + v + " / " + threads + " thread BlueStacks ko" };
+                    var r = new Round { Name = "Round " + n + ":  " + v + " CPU core" + (v == c ? "  (abhi wali)" : ""), Desc = RN(rend) + "  •  " + f + " FPS  •  " + v + " / " + threads + " thread BlueStacks ko" };
                     if (v != c) r.Values["cpus"] = v.ToString();
                     rounds.Add(r); n++;
                 }
@@ -276,7 +278,7 @@ namespace NabaGameBooster
 
         private void Finish()
         {
-            var r1 = rounds[0];
+            var r1 = rounds.FirstOrDefault(x => x.Values.Count == 0) ?? rounds[0];   // abhi wali setting = muqabla
             var winner = rounds.OrderByDescending(x => x.Score).First();
             var best = new Dictionary<string, string>(original);
             string why;
