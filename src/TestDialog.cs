@@ -312,6 +312,13 @@ namespace NabaGameBooster
                 string cp; int cv; if (winner.Values.TryGetValue("cpus", out cp) && int.TryParse(cp, out cv)) { Settings.SetInt("EmuCpus", cv); PcProfile.Reset(); }
             }
             else { winner = r1; why = "abhi wali setting hi sabse achhi hai"; }
+            // CPU test: jeeta hua core yaad rakho (BOOST dabane par bhi wahi rahe)
+            if (mode == "cpu")
+            {
+                string cp; int cv;
+                if (!winner.Values.TryGetValue("cpus", out cp)) original.TryGetValue("cpus", out cp);
+                if (int.TryParse(cp, out cv) && cv >= 2) { Settings.SetInt("EmuCpus", cv); PcProfile.Reset(); }
+            }
             foreach (var r in rounds) if (r == winner) { r.Row.Border = Theme.Green; r.Row.Invalidate(); r.Status.Text = "BEST  •  " + r.Status.Text; }
 
             stepText.Text = "RESULT\n\n" + why + ".\n\nBlueStacks best setting ke saath dobara khulega.\nGraphics quality wahi rahegi jo aapne rakhi hai.";

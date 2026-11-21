@@ -126,6 +126,20 @@ namespace NabaGameBooster
                 fade.Tick += (s2, e2) => { double o = Opacity + 0.08; if (o >= 1) { Opacity = 1; fade.Stop(); fade.Dispose(); } else Opacity = o; };
                 fade.Start();
                 GameMode.CleanStaleState();
+                Task.Factory.StartNew(() =>
+                {
+                    // Setting Test se pehle wala CPU core (jaise 8) BOOST me 6 na ho jaye
+                    try
+                    {
+                        var em = BsControl.Emu;
+                        if (em != null && Settings.GetInt("EmuCpus", 0) == 0)
+                        {
+                            int c; string v = BsControl.Get(em, BsControl.Instance(em), "cpus");
+                            if (int.TryParse(v, out c) && c > PcProfile.Current.BsCpus && c <= Environment.ProcessorCount) { Settings.SetInt("EmuCpus", c); PcProfile.Reset(); }
+                        }
+                    }
+                    catch { }
+                });
                 Task.Factory.StartNew(() => { try { Tweaks.MouseRestoreOnce(m => BeginInvoke(new Action(() => Log(m)))); } catch { } });
                 Log("Naba Game Booster v" + Updater.CurrentText + " shuru.");
                 if (GameMode.IsOn) Log("Game Mode abhi bhi ON hai - khel ke STOP dabao.");
