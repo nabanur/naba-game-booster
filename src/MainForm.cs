@@ -196,7 +196,7 @@ namespace NabaGameBooster
         {
             var card = new Card { Location = new Point(8, 146), Size = new Size(332, 360), Neon = true };
             card.Controls.Add(SectionLabel("GAME MODE", 24, 20));
-            gmButton = new RoundButton { Pulse = true, Location = new Point(18, 54), Size = new Size(296, 132), ChamferShape = true, IconName = "play", Font = Theme.Heavy(26F) };
+            gmButton = new RoundButton { Pulse = true, Location = new Point(18, 54), Size = new Size(296, 108), ChamferShape = true, IconName = "play", Font = Theme.Heavy(26F) };
             gmButton.Click += (s, e) =>
             {
                 if (busy) return;
@@ -212,12 +212,16 @@ namespace NabaGameBooster
                     });
                 else RunJob("Game Mode START", log => { GameMode.On(log); if (GameMode.IsOn) { Jhatka.Start(); log("Jhatka Recorder ON - match ke baad STOP dabao, report milegi."); } });
             };
-            gmStatus = new Label { Location = new Point(26, 190), Size = new Size(286, 22), Font = Theme.Semi(10F), BackColor = Color.Transparent };
-            var hint = new Label
+            gmStatus = new Label { Location = new Point(26, 166), Size = new Size(286, 22), Font = Theme.Semi(10F), BackColor = Color.Transparent };
+            // PLAY: Setting Test jaisa - Game Mode ON, BlueStacks fresh + admin mode, Free Fire seedha, High priority
+            var hint = new RoundButton
             {
-                Text = "Browser, Premiere, Telegram waghera pause - kaam jaisa ka taisa. STOP pe sab wahin se chalu.",
-                Location = new Point(26, 214), Size = new Size(286, 38), ForeColor = Theme.SubText, Font = Theme.F(9F), BackColor = Color.Transparent
+                Text = "PLAY FREE FIRE", IconName = "rocket", ChamferShape = true, Shine = true, GlowColor = Theme.Accent,
+                Fill = Color.FromArgb(255, 176, 40), Fill2 = Theme.AccentDark, ForeColor = Color.FromArgb(30, 14, 4), Font = Theme.Heavy(13F),
+                Location = new Point(18, 192), Size = new Size(296, 58)
             };
+            hint.Click += (s, e) => Play();
+            allButtons.Add(hint);
             var aiRow = new Card { Location = new Point(20, 256), Size = new Size(292, 42), Fill = Theme.Row, Border = Theme.RowBorder, Radius = 9 };
             aiRow.Controls.Add(new IconBox { IconName = "chat", Location = new Point(10, 9), Size = new Size(24, 24) });
             aiRow.Controls.Add(new Label { Text = "Claude / ChatGPT bhi pause", Font = Theme.F(9.5F), ForeColor = Theme.Text, Location = new Point(42, 11), AutoSize = true, BackColor = Color.Transparent });
@@ -247,6 +251,47 @@ namespace NabaGameBooster
             tip.SetToolTip(svRow, "Game ke time Windows Update, Search, SysMain, Telemetry thodi der rukte hain - STOP pe wapas chalu.");
             card.Controls.AddRange(new Control[] { gmButton, gmStatus, hint, aiRow, svRow });
             Controls.Add(card);
+        }
+
+        private void Play()
+        {
+            if (busy) return;
+            var em = BsControl.Emu;
+            if (em == null) { Info("BlueStacks / MSI App Player nahi mila."); return; }
+            string inst = BsControl.Instance(em);
+            bool restart = false;
+            if (BsControl.Running)
+            {
+                var a = MessageBox.Show(this,
+                    "BlueStacks pehle se chal raha hai.\n\nTest jaisa smooth chalane ke liye use band karke fresh kholna hoga (chalu match band ho jayega).\n\nYes = restart karo (best)\nNo = jaisa hai waisa, sirf Game Mode + High priority",
+                    "PLAY", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                if (a == DialogResult.Cancel) return;
+                restart = a == DialogResult.Yes;
+            }
+            RunJob("PLAY", log =>
+            {
+                if (!GameMode.IsOn) { GameMode.On(log); if (GameMode.IsOn) { Jhatka.Start(); log("Jhatka Recorder ON - match ke baad STOP dabao, report milegi."); } }
+                if (restart) { log("BlueStacks band ho raha hai (fresh start ke liye)..."); BsControl.Close(); }
+                if (!BsControl.Running)
+                {
+                    BsControl.AiHighlightsOff(em);
+                    BsControl.Launch(em, inst);
+                    log("BlueStacks admin mode me fresh khul raha hai, Free Fire seedha launch...");
+                }
+                else GameMode.SetBlueStacksPriority(ProcessPriorityClass.High);
+            }, () =>
+            {
+                // BlueStacks ke khulne ka intezar karke High priority (do baar - BlueStacks shuru me khud badalta hai)
+                Task.Factory.StartNew(() =>
+                {
+                    for (int i = 0; i < 90 && !BsControl.Running; i++) System.Threading.Thread.Sleep(1000);
+                    System.Threading.Thread.Sleep(5000);
+                    GameMode.SetBlueStacksPriority(ProcessPriorityClass.High);
+                    System.Threading.Thread.Sleep(20000);
+                    GameMode.SetBlueStacksPriority(ProcessPriorityClass.High);
+                    try { BeginInvoke(new Action(() => Log("BlueStacks = HIGH priority. Match me F11 (full screen), aur khelo!"))); } catch { }
+                });
+            });
         }
 
         // ================= System card =================
